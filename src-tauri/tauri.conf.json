@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PTools",
+  "version": "1.0.0",
+  "identifier": "com.white.ptools",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYzQTRDRTU0OEVBRkU4MzIKUldReTZLK09WTTZrODJvYUpSaGc4ZFFEWlZtZkloYzR6eHZydnRmSEpISlBveFVNVTd2ckQ1Z1AK",
+      "endpoints": [
+        "https://github.com/white-super/PTools/releases/latest/download/latest.json"
+      ]
+    }
+  },
+  "app": {
+    "windows": [
+
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$HOME/**", "$TEMP/**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "macOS": {
+      "signingIdentity": "-",
+      "dmg": {
+        "windowPosition": {
+          "x": 400,
+          "y": 0
+        }
+      }
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

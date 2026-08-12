@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Local application data and agent work logs
+.workbuddy/
+.claude/
+docs/AI_PROJECT_REFERENCE.md
+settings.json
+history.sqlite
+history.sqlite-shm
+history.sqlite-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Local environment and signing credentials
+.env
+.env.*
+!.env.example
+*.p12
+*.p8
+*.mobileprovision
+
+# Editor directories and files
+.vscode/
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

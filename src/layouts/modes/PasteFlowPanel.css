@@ -1,0 +1,67 @@
+.paste-flow-panel {
+  --panel-text: #1f2937;
+  --panel-muted: #6b7280;
+  display: flex;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  color: var(--panel-text);
+  background: #f6f7f9;
+}
+
+.card-container {
+  display: flex;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 12px;
+  padding: 2px;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.card-container::-webkit-scrollbar {
+  display: none;
+}
+
+.card-container > * {
+  flex: 0 0 clamp(190px, 18vw, 240px);
+  height: 100%;
+}
+
+.empty-state {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  color: var(--panel-muted);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.empty-state-title,
+.empty-state-description {
+  margin: 0;
+}
+
+.empty-state-title {
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty-state-description {
+  margin-top: 6px;
+  font-size: 13px;
+}
