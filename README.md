@@ -34,7 +34,33 @@ PTools 是一个以复制粘贴为载体的工具集，我最开始用Paste Past
 2. 打开 `.dmg`，将 **PTools** 拖入“应用程序”文件夹。
 3. 首次启动后，按下默认快捷键 `Ctrl + V` 呼出剪贴板面板。
 
-> 如果 macOS 阻止首次打开，请在“系统设置 → 隐私与安全性”中确认打开该应用。
+### macOS 首次安装信任与权限
+
+GitHub 下载的版本目前使用临时签名，macOS 可能提示无法验证开发者，或者辅助功能开关打开后仍无法自动粘贴。将应用拖入“应用程序”后，在“终端”中执行以下命令（不需要安装 Tauri、Node.js 或其他开发工具）：
+
+```bash
+osascript -e 'quit app "PTools"' 2>/dev/null || true
+sudo xattr -dr com.apple.quarantine /Applications/PTools.app
+sudo codesign --force --deep --sign - \
+  --requirements '=designated => identifier "com.white.ptools"' \
+  /Applications/PTools.app
+tccutil reset Accessibility com.white.ptools
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+  -f /Applications/PTools.app
+killall Dock
+open /Applications/PTools.app
+```
+
+执行 `sudo` 命令时输入你的 macOS 登录密码（输入过程中不会显示字符）。随后打开“系统设置 → 隐私与安全性 → 辅助功能”，点击底部的 `+`，选择 `/Applications/PTools.app` 并开启 **PTools**。
+
+授权后请完全退出 PTools（包括菜单栏或后台进程），再重新打开应用：
+
+```bash
+osascript -e 'quit app "PTools"'
+open /Applications/PTools.app
+```
+
+如果仍提示无法打开，可在“系统设置 → 隐私与安全性”中点击“仍要打开”。每次替换或升级 `PTools.app` 后，可能需要重新执行上述命令并重新授权。
 
 ## 主要功能
 
