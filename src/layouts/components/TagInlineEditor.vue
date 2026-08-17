@@ -75,18 +75,18 @@ onMounted(() => {
   flex: 0 0 auto;
   align-items: center;
   gap: 5px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--app-border);
   border-radius: 7px;
   padding: 2px 5px;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgb(15 23 42 / 0.08);
+  background: var(--app-surface-elevated);
+  box-shadow: var(--app-shadow);
 }
 
 .tag-name-input {
   width: 72px;
   border: 0;
   outline: none;
-  color: #334155;
+  color: var(--app-text);
   background: transparent;
   font: inherit;
   font-size: 12px;
@@ -111,8 +111,8 @@ onMounted(() => {
 }
 
 .tag-color-option-active {
-  border-color: #1f2937;
-  box-shadow: 0 0 0 1px #ffffff;
+  border-color: var(--app-heading);
+  box-shadow: 0 0 0 1px var(--app-surface-elevated);
 }
 
 .tag-editor-action {
@@ -121,7 +121,7 @@ onMounted(() => {
   border: 0;
   border-radius: 4px;
   padding: 0;
-  color: #64748b;
+  color: var(--app-muted);
   background: transparent;
   font-size: 13px;
   line-height: 18px;
@@ -129,15 +129,15 @@ onMounted(() => {
 }
 
 .tag-editor-action:hover {
-  background: #f1f5f9;
+  background: var(--app-hover);
 }
 
 .tag-editor-action:disabled {
-  color: #cbd5e1;
+  color: var(--app-border);
   background: transparent;
 }
 
 .tag-editor-save {
-  color: #2563eb;
+  color: var(--app-primary);
 }
 </style>

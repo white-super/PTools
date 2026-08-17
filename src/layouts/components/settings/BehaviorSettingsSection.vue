@@ -42,14 +42,14 @@ const autoPaste = computed({
 }
 
 .setting-title {
-  color: #202124;
+  color: var(--app-heading);
   font-size: 15px;
   font-weight: 650;
 }
 
 .setting-description {
   margin-top: 6px;
-  color: #6b7280;
+  color: var(--app-muted);
   font-size: 13px;
 }
 </style>

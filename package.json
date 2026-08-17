@@ -2,14 +2,14 @@
   "name": "ptools",
   "description": "A local-first clipboard history app for macOS",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:macos": "./scripts/dev-macos.sh",
     "build": "vue-tsc --noEmit && vite build",
-    "build:macos": "pnpm tauri build --bundles app && ./scripts/sign-macos-app.sh",
+    "build:macos": "pnpm tauri build --bundles dmg,app --config src-tauri/tauri.local.conf.json && ./scripts/sign-macos-app.sh",
     "preview": "vite preview",
     "tauri": "./scripts/tauri.sh"
   },

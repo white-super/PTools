@@ -31,10 +31,10 @@ const emit = defineEmits<{
   z-index: 20;
   min-width: 104px;
   padding: 4px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 8px 24px rgb(15 23 42 / 0.14);
+  background: var(--app-surface-elevated);
+  box-shadow: var(--app-shadow);
 }
 
 .tag-context-menu-item {
@@ -43,7 +43,7 @@ const emit = defineEmits<{
   border: 0;
   border-radius: 5px;
   padding: 7px 9px;
-  color: #334155;
+  color: var(--app-text);
   background: transparent;
   font: inherit;
   font-size: 12px;
@@ -52,14 +52,14 @@ const emit = defineEmits<{
 }
 
 .tag-context-menu-item:hover {
-  background: #f1f5f9;
+  background: var(--app-hover);
 }
 
 .tag-context-menu-item-danger {
-  color: #dc2626;
+  color: var(--app-danger);
 }
 
 .tag-context-menu-item-danger:hover {
-  background: #fef2f2;
+  background: var(--app-danger-hover);
 }
 </style>

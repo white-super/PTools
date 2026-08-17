@@ -1,116 +1,65 @@
 <script setup lang="ts">
-import { computed, shallowRef } from "vue";
+import { computed } from "vue";
 import type { AppSettings } from "../../types/settings";
+import ShortcutCaptureRow from "./ShortcutCaptureRow.vue";
 
 const settings = defineModel<AppSettings>({ required: true });
-const captureHint = shallowRef("点击输入框后按下新的组合键");
+type ShortcutField =
+  | "mainShortcut"
+  | "previousFilterShortcut"
+  | "nextFilterShortcut"
+  | "previousCardShortcut"
+  | "nextCardShortcut";
 
-const mainShortcut = computed({
-  get: () => settings.value.mainShortcut,
-  set: (mainShortcut: string) => {
-    settings.value = { ...settings.value, mainShortcut };
-  },
-});
-
-function isModifierKey(event: KeyboardEvent) {
-  return ["Alt", "Control", "Meta", "Shift"].includes(event.key);
+function settingField(key: ShortcutField) {
+  return computed({
+    get: () => settings.value[key],
+    set: (value: string) => {
+      settings.value = { ...settings.value, [key]: value };
+    },
+  });
 }
 
-function shortcutKey(event: KeyboardEvent) {
-  if (event.code.startsWith("Key")) {
-    return event.code.slice(3);
-  }
-  if (event.code.startsWith("Digit")) {
-    return event.code.slice(5);
-  }
-  if (event.code === "Space") {
-    return "Space";
-  }
-  return event.code;
-}
-
-function captureShortcut(event: KeyboardEvent) {
-  event.preventDefault();
-  if (isModifierKey(event)) {
-    captureHint.value = "请同时按下一个非修饰键";
-    return;
-  }
-  const modifiers = [
-    event.ctrlKey && "Ctrl",
-    event.altKey && "Option",
-    event.shiftKey && "Shift",
-    event.metaKey && "Command",
-  ].filter(Boolean);
-  if (modifiers.length === 0) {
-    captureHint.value = "快捷键必须包含 Ctrl、Option、Shift 或 Command";
-    return;
-  }
-  mainShortcut.value = [...modifiers, shortcutKey(event)].join("+");
-  captureHint.value = "已录入并自动生效";
-}
+const mainShortcut = settingField("mainShortcut");
+const previousFilterShortcut = settingField("previousFilterShortcut");
+const nextFilterShortcut = settingField("nextFilterShortcut");
+const previousCardShortcut = settingField("previousCardShortcut");
+const nextCardShortcut = settingField("nextCardShortcut");
 </script>
 
 <template>
-  <section class="settings-section">
-    <div class="shortcut-row">
-      <div class="setting-copy">
-        <h2 class="setting-title">粘贴板快捷键</h2>
-        <p class="field-hint">{{ captureHint }}</p>
-      </div>
-      <el-input
-        v-model="mainShortcut"
-        class="shortcut-input"
-        size="small"
-        readonly
-        :aria-label="captureHint"
-        @keydown="captureShortcut"
-      />
-    </div>
-  </section>
+  <div class="settings-stack">
+    <ShortcutCaptureRow
+      v-model="mainShortcut"
+      title="粘贴板快捷键"
+      description="点击输入框后按下新的组合键"
+    />
+    <ShortcutCaptureRow
+      v-model="previousFilterShortcut"
+      title="上一个标签快捷键"
+      description="在粘贴面板中向左切换标签"
+    />
+    <ShortcutCaptureRow
+      v-model="nextFilterShortcut"
+      title="下一个标签快捷键"
+      description="在粘贴面板中向右切换标签"
+    />
+    <ShortcutCaptureRow
+      v-model="previousCardShortcut"
+      title="上一张卡片快捷键"
+      description="向左选择卡片，也可以使用左方向键"
+    />
+    <ShortcutCaptureRow
+      v-model="nextCardShortcut"
+      title="下一张卡片快捷键"
+      description="向右选择卡片，也可以使用右方向键"
+    />
+  </div>
 </template>
 
 <style scoped>
-.settings-section {
-  min-width: 0;
-}
-
-.setting-copy {
-  min-width: 0;
-}
-
-.shortcut-input {
-  flex: 0 0 180px;
-}
-
-.field-hint {
-  margin: 6px 0 0;
-  color: #6b7280;
-  font-size: 13px;
-}
-
-.shortcut-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-}
-
-.setting-title {
-  margin: 0;
-  color: #202124;
-  font-size: 15px;
-  font-weight: 650;
-}
-
-@media (max-width: 560px) {
-  .shortcut-row {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .shortcut-input {
-    width: 180px;
-  }
+.settings-stack {
+  display: grid;
+  gap: 12px;
 }
 </style>

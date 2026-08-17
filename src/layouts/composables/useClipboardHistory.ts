@@ -14,14 +14,18 @@ import type {
   AppSettings,
   ClipboardFormat,
   ClipboardHistoryEntry,
+  ClipboardHistoryPage,
+  ClipboardHistoryQuery,
   ClipboardTag,
   ClipboardTagInput,
   SystemPermissionStatus,
 } from "../types/settings";
 
 const HISTORY_UPDATED_EVENT = "clipboard-history-updated";
+const MAIN_PANEL_FOCUS_EVENT = "tauri://focus";
 const SETTINGS_UPDATED_EVENT = "app-settings-updated";
 const TAGS_UPDATED_EVENT = "clipboard-tags-updated";
+const HISTORY_PAGE_SIZE = 20;
 
 interface ClipboardHistoryInput {
   readonly format: ClipboardFormat;
@@ -41,10 +45,15 @@ export function useClipboardHistory() {
   let unlistenImageUpdate: UnlistenFn | undefined;
   let unlistenFilesUpdate: UnlistenFn | undefined;
   let unlistenHistoryUpdate: UnlistenFn | undefined;
+  let unlistenPanelFocus: UnlistenFn | undefined;
   let unlistenSettingsUpdate: UnlistenFn | undefined;
   let unlistenTagsUpdate: UnlistenFn | undefined;
   let stopListening: (() => Promise<void>) | undefined;
   let historyQueue: Promise<void> = Promise.resolve();
+  const hasMore = shallowRef(false);
+  const isLoading = shallowRef(false);
+  const currentQuery = shallowRef<ClipboardHistoryQuery>({ search: "" });
+  let requestSequence = 0;
 
   function updateCards(nextCards: ClipboardHistoryEntry[]) {
     cards.value = nextCards;
@@ -54,20 +63,66 @@ export function useClipboardHistory() {
     tags.value = nextTags;
   }
 
+  function updateCardTags(id: number, tagIds: readonly number[]) {
+    const nextTagIds = [...tagIds];
+    const activeTagId = currentQuery.value.tagId;
+    if (activeTagId !== undefined && !nextTagIds.includes(activeTagId)) {
+      updateCards(cards.value.filter((card) => card.id !== id));
+      return;
+    }
+    updateCards(
+      cards.value.map((card) => (card.id === id ? { ...card, tagIds: nextTagIds } : card)),
+    );
+  }
+
   async function load() {
-    const [nextCards, nextSettings, nextTags] = await Promise.all([
-      invoke<ClipboardHistoryEntry[]>("get_clipboard_history"),
+    const [nextSettings, nextTags] = await Promise.all([
       invoke<AppSettings>("get_app_settings"),
       invoke<ClipboardTag[]>("get_clipboard_tags"),
     ]);
-    updateCards(nextCards);
     settings.value = nextSettings;
     updateTags(nextTags);
   }
 
+  async function refreshSettings() {
+    settings.value = await invoke<AppSettings>("get_app_settings");
+  }
+
+  async function fetchPage(query: ClipboardHistoryQuery, offset: number, replace: boolean) {
+    const sequence = ++requestSequence;
+    isLoading.value = true;
+    try {
+      const page = await invoke<ClipboardHistoryPage>("get_clipboard_history", {
+        query: { ...query, offset, limit: HISTORY_PAGE_SIZE },
+      });
+      if (sequence !== requestSequence) {
+        return;
+      }
+      updateCards(replace ? page.entries : [...cards.value, ...page.entries]);
+      hasMore.value = page.hasMore;
+    } finally {
+      if (sequence === requestSequence) {
+        isLoading.value = false;
+      }
+    }
+  }
+
+  async function reload(query: ClipboardHistoryQuery) {
+    currentQuery.value = query;
+    updateCards([]);
+    hasMore.value = false;
+    await fetchPage(query, 0, true);
+  }
+
+  async function loadMore() {
+    if (isLoading.value || !hasMore.value) {
+      return;
+    }
+    await fetchPage(currentQuery.value, cards.value.length, false);
+  }
+
   async function record(entry: ClipboardHistoryInput) {
-    const nextCards = await invoke<ClipboardHistoryEntry[]>("record_clipboard_history", { entry });
-    updateCards(nextCards);
+    await invoke("record_clipboard_history", { entry });
   }
 
   function enqueueHistoryRecord(entry: ClipboardHistoryInput) {
@@ -129,8 +184,7 @@ export function useClipboardHistory() {
   }
 
   async function deleteCard(id: number) {
-    const nextCards = await invoke<ClipboardHistoryEntry[]>("delete_clipboard_history", { id });
-    updateCards(nextCards);
+    await invoke("delete_clipboard_history", { id });
   }
 
   async function createTag(input: ClipboardTagInput) {
@@ -149,16 +203,20 @@ export function useClipboardHistory() {
   }
 
   async function setCardTags(id: number, tagIds: readonly number[]) {
-    const nextCards = await invoke<ClipboardHistoryEntry[]>("set_clipboard_history_tags", {
+    await invoke("set_clipboard_history_tags", {
       id,
       tagIds,
     });
-    updateCards(nextCards);
+    updateCardTags(id, tagIds);
   }
 
   async function startMonitoring() {
-    unlistenHistoryUpdate = await listen<ClipboardHistoryEntry[]>(HISTORY_UPDATED_EVENT, (event) => {
-      updateCards(event.payload);
+    unlistenHistoryUpdate = await listen(HISTORY_UPDATED_EVENT, () => {
+      requestSequence += 1;
+      void reload(currentQuery.value).catch(reportHistoryError);
+    });
+    unlistenPanelFocus = await listen(MAIN_PANEL_FOCUS_EVENT, () => {
+      void refreshSettings().catch(reportHistoryError);
     });
     unlistenSettingsUpdate = await listen<AppSettings>(SETTINGS_UPDATED_EVENT, (event) => {
       settings.value = event.payload;
@@ -173,8 +231,8 @@ export function useClipboardHistory() {
   }
 
   async function initialize() {
-    await load();
     await startMonitoring();
+    await load();
   }
 
   function dispose() {
@@ -182,6 +240,7 @@ export function useClipboardHistory() {
     unlistenImageUpdate?.();
     unlistenFilesUpdate?.();
     unlistenHistoryUpdate?.();
+    unlistenPanelFocus?.();
     unlistenSettingsUpdate?.();
     unlistenTagsUpdate?.();
     if (stopListening) {
@@ -200,8 +259,13 @@ export function useClipboardHistory() {
     createTag,
     deleteCard,
     deleteTag,
+    hasMore,
+    isLoading,
+    loadMore,
     pasteCard,
+    reload,
     setCardTags,
+    settings,
     tags,
     updateTag,
   };

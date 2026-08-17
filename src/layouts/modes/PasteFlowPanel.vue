@@ -3,92 +3,87 @@ import { computed, shallowRef, useTemplateRef } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import CardContextMenu from "../components/CardContextMenu.vue";
 import ClipboardFilterBar from "../components/ClipboardFilterBar.vue";
+import ClipboardSearchInput from "../components/ClipboardSearchInput.vue";
 import PasteCard from "../components/PasteCard/index.vue";
+import { DEFAULT_APP_THEME } from "../constants/appThemes";
 import { useClipboardHistory } from "../composables/useClipboardHistory";
+import { useClipboardHistoryQuery } from "../composables/useClipboardHistoryQuery";
 import { usePanelDismissal } from "../composables/usePanelDismissal";
-import {
-  MAX_QUICK_SELECT_CARDS,
-  usePasteFlowKeyboard,
-} from "../composables/usePasteFlowKeyboard";
-import type {
-  ClipboardFilter,
-  ClipboardHistoryEntry,
-  ClipboardTagInput,
-} from "../types/settings";
-
+import { usePanelEmptyState } from "../composables/usePanelEmptyState";
+import { MAX_QUICK_SELECT_CARDS, usePasteFlowKeyboard } from "../composables/usePasteFlowKeyboard";
+import { useShortcutHelpPanel } from "../composables/useShortcutHelpPanel";
+import type { ClipboardFilter, ClipboardHistoryEntry, ClipboardTagInput } from "../types/settings";
 interface CardContextMenuState {
   readonly cardId: number;
   readonly x: number;
   readonly y: number;
   readonly assignedTagIds: readonly number[];
 }
-
 const CONTEXT_MENU_WIDTH = 152;
 const CONTEXT_MENU_MAX_HEIGHT = 264;
 const CONTEXT_MENU_BASE_HEIGHT = 42;
 const CONTEXT_MENU_MARGIN = 8;
+const FORMAT_FILTERS: readonly ClipboardFilter[] = ["text", "image", "file"];
 
 const {
   cards,
   createTag,
   deleteCard,
   deleteTag,
+  hasMore,
+  isLoading,
+  loadMore,
   pasteCard,
+  reload,
   setCardTags,
+  settings,
   tags,
   updateTag,
 } = useClipboardHistory();
-const activeFilter = shallowRef<ClipboardFilter>("all");
 const isPasting = shallowRef(false);
 const contextMenu = shallowRef<CardContextMenuState>();
 const cardContainer = useTemplateRef<HTMLDivElement>("cardContainer");
 const filterBar = useTemplateRef<InstanceType<typeof ClipboardFilterBar>>("filterBar");
-
-const visibleCards = computed(() => {
-  const filter = activeFilter.value;
-  if (filter === "all") {
-    return cards.value;
-  }
-  if (typeof filter === "number") {
-    return cards.value.filter((card) => card.tagIds.includes(filter));
-  }
-  return cards.value.filter((card) => card.format === filter);
+const searchInput = useTemplateRef<InstanceType<typeof ClipboardSearchInput>>("searchInput");
+const panelThemeClass = computed(() => `theme-${settings.value?.theme ?? DEFAULT_APP_THEME}`);
+const { isHelpOpen, setHelpOpen } = useShortcutHelpPanel({
+  reportError: (error) => reportPanelError("toggle shortcut help panel", error),
 });
-
-const emptyStateTitle = computed(() => {
-  if (cards.value.length === 0) {
-    return "暂无历史内容";
-  }
-  if (typeof activeFilter.value === "number") {
-    const tag = tags.value.find((entry) => entry.id === activeFilter.value);
-    return `暂无“${tag?.name ?? "该标签"}”内容`;
-  }
-  return "当前格式暂无内容";
+const {
+  activeFilter,
+  flushSearch,
+  handleCardContainerScroll,
+  searchQuery,
+  scrollHorizontally,
+  visibleCards,
+} = useClipboardHistoryQuery({
+  cards,
+  hasMore,
+  isLoading,
+  loadMore,
+  reload,
+  reportError: (error) => reportPanelError("load clipboard history", error),
+  resetScroll: () => cardContainer.value?.scrollTo({ left: 0, behavior: "auto" }),
 });
-
-const emptyStateDescription = computed(() => {
-  if (cards.value.length === 0) {
-    return "复制文本、图片或文件后会自动显示在这里";
-  }
-  if (typeof activeFilter.value === "number") {
-    return "右键卡片即可为它添加标签";
-  }
-  return "请选择其他格式查看历史内容";
+const availableFilters = computed<readonly ClipboardFilter[]>(() => [
+  "all",
+  ...(settings.value?.showFormatFilters ? FORMAT_FILTERS : []),
+  ...tags.value.map((tag) => tag.id),
+]);
+const { description: emptyStateDescription, title: emptyStateTitle } = usePanelEmptyState({
+  activeFilter, isLoading, searchQuery, tags,
 });
-
 function reportPanelError(action: string, error: unknown) {
   console.error(`Failed to ${action}`, error);
   const message = error instanceof Error ? error.message : String(error);
   ElMessage.error(message);
 }
-
 function closeCardContextMenu() {
   contextMenu.value = undefined;
 }
-
 function closeMenus() {
   closeCardContextMenu();
-  filterBar.value?.closeTagContextMenu();
+  filterBar.value?.closeMenus();
 }
 
 function openCardContextMenu(card: ClipboardHistoryEntry, event: MouseEvent) {
@@ -124,9 +119,9 @@ async function handleToggleCardTag(tagId: number) {
     return;
   }
   const assignedTagIds = toggleTagId(menu.assignedTagIds, tagId);
+  closeCardContextMenu();
   try {
     await setCardTags(menu.cardId, assignedTagIds);
-    contextMenu.value = { ...menu, assignedTagIds };
   } catch (error) {
     reportPanelError("update clipboard tags", error);
   }
@@ -206,43 +201,65 @@ async function handlePaste(card: ClipboardHistoryEntry) {
   }
 }
 
-function scrollHorizontally(event: WheelEvent) {
-  const container = event.currentTarget;
-  if (!(container instanceof HTMLElement)) {
+async function handleSearchSubmit() {
+  try {
+    await flushSearch();
+  } catch (error) {
+    reportPanelError("search clipboard history", error);
     return;
   }
-  const scrollOffset = event.deltaX || event.deltaY;
-  if (scrollOffset !== 0) {
-    container.scrollLeft += scrollOffset;
+  const card = visibleCards.value.find((entry) => entry.id === selectedCardId.value) ?? visibleCards.value[0];
+  if (card) {
+    await handlePaste(card);
   }
 }
 
 const { selectedCardId, selectCard } = usePasteFlowKeyboard({
   cards: visibleCards,
+  cardNavigation: { shortcutSettings: settings },
   getCardContainer: () => cardContainer.value,
   closeMenus,
+  filterNavigation: {
+    activeFilter,
+    filters: availableFilters,
+    shortcutSettings: settings,
+  },
+  focusSearch: () => searchInput.value?.focus(),
   pasteCard: (card) => void handlePaste(card),
   reportError: (error) => reportPanelError("listen for main panel focus", error),
 });
 
-usePanelDismissal();
+usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = ""; } });
 </script>
 
 <template>
-  <div class="paste-flow-panel" @click="closeMenus">
-    <ClipboardFilterBar
-      ref="filterBar"
-      :tags="tags"
-      :active-filter="activeFilter"
-      @filter-change="activeFilter = $event"
-      @create-tag="handleCreateTag"
-      @update-tag="handleUpdateTag"
-      @delete-tag="handleDeleteTag"
-    />
+  <div class="paste-flow-panel" :class="panelThemeClass" @click="closeMenus">
+    <div class="panel-toolbar">
+      <ClipboardFilterBar
+        ref="filterBar"
+        class="panel-filters"
+        :tags="tags"
+        :active-filter="activeFilter"
+        :help-open="isHelpOpen"
+        :show-format-filters="settings?.showFormatFilters ?? false"
+        @filter-change="activeFilter = $event"
+        @create-tag="handleCreateTag"
+        @update-tag="handleUpdateTag"
+        @delete-tag="handleDeleteTag"
+        @help-open-change="setHelpOpen"
+      />
+      <ClipboardSearchInput
+        ref="searchInput"
+        v-model="searchQuery"
+        class="panel-search"
+        @submit="handleSearchSubmit"
+      />
+    </div>
     <div
       v-if="visibleCards.length"
       ref="cardContainer"
       class="card-container"
+      @scroll="handleCardContainerScroll"
       @wheel.prevent="scrollHorizontally"
     >
       <PasteCard

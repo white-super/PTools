@@ -39,7 +39,7 @@ const activeTab = defineModel<SettingsTab>({ required: true });
   border: 0;
   border-radius: 10px;
   padding: 12px 14px;
-  color: #4b5563;
+  color: var(--app-secondary);
   background: transparent;
   font: inherit;
   font-size: 15px;
@@ -49,12 +49,12 @@ const activeTab = defineModel<SettingsTab>({ required: true });
 }
 
 .navigation-item:hover {
-  background: #eaedf1;
+  background: var(--settings-navigation-hover);
 }
 
 .navigation-item.is-active {
-  color: #1f2937;
-  background: #e3e7ec;
+  color: var(--app-heading);
+  background: var(--settings-navigation-active);
 }
 
 .navigation-icon {
@@ -62,7 +62,7 @@ const activeTab = defineModel<SettingsTab>({ required: true });
   align-items: center;
   justify-content: center;
   width: 20px;
-  color: #374151;
+  color: currentColor;
   font-size: 22px;
   line-height: 1;
 }

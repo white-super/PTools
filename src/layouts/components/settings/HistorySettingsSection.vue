@@ -40,6 +40,11 @@ const recordFiles = computed({
   get: () => settings.value.recordFiles,
   set: (recordFiles: boolean) => updateSettings({ recordFiles }),
 });
+
+const showFormatFilters = computed({
+  get: () => settings.value.showFormatFilters,
+  set: (showFormatFilters: boolean) => updateSettings({ showFormatFilters }),
+});
 </script>
 
 <template>
@@ -81,6 +86,10 @@ const recordFiles = computed({
           <p class="setting-description">选择需要保存的剪贴板内容类型。</p>
         </div>
         <div class="record-types">
+          <label class="record-type">
+            <span>显示类型标签</span>
+            <el-switch v-model="showFormatFilters" size="small" aria-label="在粘贴面板显示类型标签" />
+          </label>
           <label class="record-type">
             <span>文本</span>
             <el-switch v-model="recordText" size="small" aria-label="记录文本" />
@@ -141,7 +150,7 @@ const recordFiles = computed({
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #5f6368;
+  color: var(--app-secondary);
   font-size: 12px;
 }
 
@@ -155,14 +164,14 @@ const recordFiles = computed({
 }
 
 .setting-title {
-  color: #202124;
+  color: var(--app-heading);
   font-size: 15px;
   font-weight: 650;
 }
 
 .setting-description {
   margin-top: 6px;
-  color: #6b7280;
+  color: var(--app-muted);
   font-size: 13px;
 }
 

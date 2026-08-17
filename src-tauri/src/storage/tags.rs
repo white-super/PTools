@@ -1,7 +1,12 @@
 use super::{history::HISTORY_DATABASE_FILE_NAME, StorageResult};
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Transaction};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{
+    collections::HashSet,
+    fs,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use tauri::{AppHandle, Manager};
 
 const HEX_COLOR_LENGTH: usize = 7;
@@ -130,40 +135,24 @@ impl TagStore {
         let transaction = connection
             .transaction()
             .map_err(|error| format!("failed to create tag transaction: {error}"))?;
-        let history_exists = transaction
-            .query_row(
-                "SELECT EXISTS(SELECT 1 FROM clipboard_history WHERE id = ?1)",
-                params![history_id],
-                |row| row.get::<_, bool>(0),
-            )
-            .map_err(|error| format!("failed to verify clipboard history entry: {error}"))?;
-        if !history_exists {
-            return Err(format!("clipboard history entry not found: {history_id}"));
-        }
-        let unique_tag_ids = tag_ids.iter().copied().collect::<HashSet<_>>();
-        for tag_id in &unique_tag_ids {
-            let tag_exists = transaction
-                .query_row(
-                    "SELECT EXISTS(SELECT 1 FROM clipboard_tags WHERE id = ?1)",
-                    params![tag_id],
-                    |row| row.get::<_, bool>(0),
-                )
-                .map_err(|error| format!("failed to verify clipboard tag: {error}"))?;
-            if !tag_exists {
-                return Err(format!("clipboard tag not found: {tag_id}"));
-            }
-        }
-        transaction
-            .execute(
-                "DELETE FROM clipboard_history_tag_links WHERE history_id = ?1",
-                params![history_id],
-            )
-            .map_err(|error| format!("failed to clear clipboard tags: {error}"))?;
-        for tag_id in unique_tag_ids {
+        ensure_history_exists(&transaction, history_id)?;
+        let next_tag_ids = tag_ids.iter().copied().collect::<HashSet<_>>();
+        ensure_tags_exist(&transaction, &next_tag_ids)?;
+        let current_tag_ids = get_history_tag_ids(&transaction, history_id)?;
+        for tag_id in current_tag_ids.difference(&next_tag_ids) {
             transaction
                 .execute(
-                    "INSERT INTO clipboard_history_tag_links (history_id, tag_id) VALUES (?1, ?2)",
+                    "DELETE FROM clipboard_history_tag_links WHERE history_id = ?1 AND tag_id = ?2",
                     params![history_id, tag_id],
+                )
+                .map_err(|error| format!("failed to remove clipboard tag assignment: {error}"))?;
+        }
+        let assigned_at = current_timestamp_millis()?;
+        for tag_id in next_tag_ids.difference(&current_tag_ids) {
+            transaction
+                .execute(
+                    "INSERT INTO clipboard_history_tag_links (history_id, tag_id, assigned_at) VALUES (?1, ?2, ?3)",
+                    params![history_id, tag_id, assigned_at],
                 )
                 .map_err(|error| format!("failed to assign clipboard tag: {error}"))?;
         }
@@ -185,6 +174,7 @@ impl TagStore {
                 CREATE TABLE IF NOT EXISTS clipboard_history_tag_links (
                     history_id INTEGER NOT NULL,
                     tag_id INTEGER NOT NULL,
+                    assigned_at INTEGER NOT NULL,
                     PRIMARY KEY(history_id, tag_id),
                     FOREIGN KEY(history_id) REFERENCES clipboard_history(id) ON DELETE CASCADE,
                     FOREIGN KEY(tag_id) REFERENCES clipboard_tags(id) ON DELETE CASCADE
@@ -193,7 +183,8 @@ impl TagStore {
                 ON clipboard_history_tag_links(tag_id);
                 ",
             )
-            .map_err(|error| format!("failed to initialize clipboard tag storage: {error}"))
+            .map_err(|error| format!("failed to initialize clipboard tag storage: {error}"))?;
+        ensure_tag_link_timestamps(&connection)
     }
 
     fn open_connection(&self) -> StorageResult<Connection> {
@@ -204,4 +195,84 @@ impl TagStore {
             .map_err(|error| format!("failed to enable tag foreign keys: {error}"))?;
         Ok(connection)
     }
+}
+
+fn ensure_history_exists(transaction: &Transaction<'_>, history_id: i64) -> StorageResult {
+    let exists = transaction
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM clipboard_history WHERE id = ?1)",
+            params![history_id],
+            |row| row.get::<_, bool>(0),
+        )
+        .map_err(|error| format!("failed to verify clipboard history entry: {error}"))?;
+    if !exists {
+        return Err(format!("clipboard history entry not found: {history_id}"));
+    }
+    Ok(())
+}
+
+fn ensure_tags_exist(transaction: &Transaction<'_>, tag_ids: &HashSet<i64>) -> StorageResult {
+    for tag_id in tag_ids {
+        let exists = transaction
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM clipboard_tags WHERE id = ?1)",
+                params![tag_id],
+                |row| row.get::<_, bool>(0),
+            )
+            .map_err(|error| format!("failed to verify clipboard tag: {error}"))?;
+        if !exists {
+            return Err(format!("clipboard tag not found: {tag_id}"));
+        }
+    }
+    Ok(())
+}
+
+fn get_history_tag_ids(
+    transaction: &Transaction<'_>,
+    history_id: i64,
+) -> StorageResult<HashSet<i64>> {
+    let mut statement = transaction
+        .prepare("SELECT tag_id FROM clipboard_history_tag_links WHERE history_id = ?1")
+        .map_err(|error| format!("failed to query clipboard tag assignments: {error}"))?;
+    let rows = statement
+        .query_map(params![history_id], |row| row.get(0))
+        .map_err(|error| format!("failed to read clipboard tag assignments: {error}"))?;
+    rows.collect::<Result<HashSet<_>, _>>()
+        .map_err(|error| format!("failed to decode clipboard tag assignments: {error}"))
+}
+
+fn ensure_tag_link_timestamps(connection: &Connection) -> StorageResult {
+    let has_assigned_at = connection
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM pragma_table_info('clipboard_history_tag_links') WHERE name = 'assigned_at')",
+            [],
+            |row| row.get::<_, bool>(0),
+        )
+        .map_err(|error| format!("failed to inspect clipboard tag storage: {error}"))?;
+    if !has_assigned_at {
+        connection
+            .execute_batch(
+                "ALTER TABLE clipboard_history_tag_links ADD COLUMN assigned_at INTEGER NOT NULL DEFAULT 0",
+            )
+            .map_err(|error| format!("failed to migrate clipboard tag storage: {error}"))?;
+    }
+    connection
+        .execute(
+            "UPDATE clipboard_history_tag_links SET assigned_at = COALESCE((SELECT updated_at * 1000 FROM clipboard_history WHERE id = history_id), 0) WHERE assigned_at = 0",
+            [],
+        )
+        .map_err(|error| format!("failed to initialize clipboard tag timestamps: {error}"))?;
+    connection
+        .execute_batch(
+            "CREATE INDEX IF NOT EXISTS clipboard_history_tag_links_assigned_at ON clipboard_history_tag_links(tag_id, assigned_at DESC, history_id DESC)",
+        )
+        .map_err(|error| format!("failed to index clipboard tag timestamps: {error}"))
+}
+
+fn current_timestamp_millis() -> StorageResult<i64> {
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("failed to read system time: {error}"))?
+        .as_millis();
+    i64::try_from(millis).map_err(|error| format!("system timestamp is out of range: {error}"))
 }

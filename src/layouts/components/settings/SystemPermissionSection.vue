@@ -82,13 +82,13 @@ onUnmounted(() => {
 .permission-detail,
 .permission-loading {
   margin: 6px 0 0;
-  color: #6b7280;
+  color: var(--app-muted);
   font-size: 13px;
 }
 
 .permission-title {
   margin: 0;
-  color: #202124;
+  color: var(--app-heading);
   font-size: 15px;
   font-weight: 650;
 }
@@ -116,7 +116,7 @@ onUnmounted(() => {
 }
 
 .permission-warning {
-  color: #b7791f;
+  color: var(--app-warning);
 }
 
 @media (max-width: 720px) {

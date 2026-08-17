@@ -1,9 +1,9 @@
-use crate::cmds;
+use crate::{cmds, storage::AppTheme};
 use std::str::FromStr;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{
-    image::Image, App, AppHandle, Emitter, EventTarget, Manager, TitleBarStyle, WebviewUrl,
+    image::Image, App, AppHandle, Emitter, EventTarget, Manager, Theme, TitleBarStyle, WebviewUrl,
     WebviewWindowBuilder, WindowEvent,
 };
 use tauri_nspanel::{cocoa::appkit::NSWindowCollectionBehavior, panel_delegate, WebviewWindowExt};
@@ -25,6 +25,14 @@ const MENU_BAR_ICON: Image<'_> = tauri::include_image!("./icons/menu-bar-templat
 pub struct Handle {}
 
 impl Handle {
+    pub fn set_app_theme(app_handle: &AppHandle, app_theme: AppTheme) {
+        let native_theme = match app_theme {
+            AppTheme::Dark => Theme::Dark,
+            AppTheme::SoftGlow | AppTheme::Classic => Theme::Light,
+        };
+        app_handle.set_theme(Some(native_theme));
+    }
+
     pub fn create_main_window(app: &mut App) -> Result<(), String> {
         let win_builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
             .title("PTools")
@@ -50,20 +58,6 @@ impl Handle {
         let window = win_builder
             .build()
             .map_err(|error| format!("failed to create main window: {error}"))?;
-
-        #[cfg(target_os = "macos")]
-        {
-            use cocoa::appkit::{NSColor, NSWindow};
-            use cocoa::base::{id, nil};
-            let ns_window = window
-                .ns_window()
-                .map_err(|error| format!("failed to access native main window: {error}"))?
-                as id;
-            unsafe {
-                let bg_color = NSColor::colorWithRed_green_blue_alpha_(nil, 1.0, 1.0, 1.0, 1.0);
-                ns_window.setBackgroundColor_(bg_color);
-            }
-        }
 
         let panel = window
             .to_panel()

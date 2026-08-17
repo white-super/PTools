@@ -6,6 +6,7 @@ import HistorySettingsSection from "../components/settings/HistorySettingsSectio
 import SettingsNavigation from "../components/settings/SettingsNavigation.vue";
 import ShortcutSettingsSection from "../components/settings/ShortcutSettingsSection.vue";
 import SystemPermissionSection from "../components/settings/SystemPermissionSection.vue";
+import ThemeSettingsSection from "../components/settings/ThemeSettingsSection.vue";
 import VersionUpdateSection from "../components/settings/VersionUpdateSection.vue";
 import { useAppSettings } from "../composables/useAppSettings";
 
@@ -48,7 +49,7 @@ async function confirmClearHistory() {
 
 async function confirmResetSettings() {
   try {
-    await ElMessageBox.confirm("恢复默认值会立即替换当前唤醒快捷键。", "确认恢复默认设置", {
+    await ElMessageBox.confirm("恢复默认值会立即替换当前快捷键和界面设置。", "确认恢复默认设置", {
       confirmButtonText: "恢复默认",
       cancelButtonText: "取消",
       type: "warning",
@@ -81,6 +82,7 @@ onMounted(() => {
           <el-alert v-if="error" class="settings-alert" :title="error" type="error" :closable="false" show-icon />
           <div v-if="isLoading" class="loading-state">正在读取本机设置…</div>
           <el-form v-else-if="settings && historyStats" class="settings-form" label-position="top">
+            <ThemeSettingsSection v-model="settings" />
             <ShortcutSettingsSection v-model="settings" />
             <HistorySettingsSection
               v-model="settings"
@@ -107,17 +109,8 @@ onMounted(() => {
 <style scoped>
 .settings-page {
   height: 100%;
-  color: #1e293b;
-  background: #ffffff;
-}
-
-:global(html),
-:global(body),
-:global(#app) {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  overflow: hidden;
+  color: var(--app-text);
+  background: var(--app-background);
 }
 
 .settings-shell {
@@ -129,15 +122,15 @@ onMounted(() => {
 .settings-sidebar {
   box-sizing: border-box;
   padding: 20px 12px;
-  border-right: 1px solid #e7e9ed;
-  background: #f8f9fb;
+  border-right: 1px solid var(--app-border);
+  background: var(--settings-sidebar-background);
 }
 
 .settings-main {
   min-width: 0;
   overflow-y: auto;
   padding: 28px 36px 40px;
-  background: #ffffff;
+  background: var(--settings-main-background);
   scrollbar-gutter: stable;
 }
 
@@ -147,7 +140,7 @@ onMounted(() => {
 
 .page-title {
   margin: 0;
-  color: #172033;
+  color: var(--app-heading);
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -166,7 +159,7 @@ onMounted(() => {
 
 .loading-state {
   padding: 28px 0;
-  color: #718096;
+  color: var(--app-muted);
   font-size: 14px;
 }
 
@@ -187,7 +180,7 @@ onMounted(() => {
   padding: 18px 24px;
   border: 0;
   border-radius: 12px;
-  background: #f8f8fa;
+  background: var(--settings-section-background);
   box-shadow: none;
 }
 
@@ -202,7 +195,8 @@ onMounted(() => {
 .settings-main :deep(.el-input__wrapper),
 .settings-main :deep(.el-select__wrapper) {
   border-radius: 10px;
-  box-shadow: 0 0 0 1px #e3e5e9 inset;
+  background: var(--settings-control-background);
+  box-shadow: 0 0 0 1px var(--settings-control-border) inset;
 }
 
 .settings-main :deep(.el-input-number) {
@@ -215,7 +209,7 @@ onMounted(() => {
 }
 
 .settings-main :deep(.el-switch) {
-  --el-switch-on-color: #10b981;
+  --el-switch-on-color: var(--app-success);
 }
 
 .settings-footer {
@@ -226,7 +220,7 @@ onMounted(() => {
 }
 
 .save-status {
-  color: #718096;
+  color: var(--app-muted);
   font-size: 13px;
 }
 
@@ -238,7 +232,7 @@ onMounted(() => {
 
   .settings-sidebar {
     border-right: 0;
-    border-bottom: 1px solid #e7e9ed;
+    border-bottom: 1px solid var(--app-border);
   }
 }
 

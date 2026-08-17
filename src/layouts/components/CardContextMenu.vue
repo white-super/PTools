@@ -1,5 +1,9 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import type { ClipboardTag } from "../types/settings";
+
+const CONTEXT_MENU_WIDTH_PX = 152;
+const VIEWPORT_MARGIN_PX = 8;
 
 interface Props {
   x: number;
@@ -13,6 +17,10 @@ const emit = defineEmits<{
   toggleTag: [tagId: number];
   delete: [];
 }>();
+
+const opensSubmenuLeft = computed(
+  () => props.x + CONTEXT_MENU_WIDTH_PX * 2 + VIEWPORT_MARGIN_PX > window.innerWidth,
+);
 </script>
 
 <template>
@@ -22,23 +30,50 @@ const emit = defineEmits<{
     role="menu"
     @click.stop
   >
-    <template v-if="props.tags.length > 0">
-      <p class="context-menu-label">标签</p>
+    <div
+      class="context-menu-submenu-container"
+      :class="{ 'context-menu-submenu-container-left': opensSubmenuLeft }"
+    >
       <button
-        v-for="tag in props.tags"
-        :key="tag.id"
         type="button"
-        class="context-menu-item"
-        :class="{ 'context-menu-item-selected': props.assignedTagIds.includes(tag.id) }"
-        @click="emit('toggleTag', tag.id)"
+        class="context-menu-item context-menu-submenu-trigger"
+        role="menuitem"
+        aria-haspopup="menu"
+        :disabled="props.tags.length === 0"
       >
-        <span class="tag-color" :style="{ backgroundColor: tag.color }"></span>
-        <span>{{ tag.name }}</span>
-        <span class="tag-selection">{{ props.assignedTagIds.includes(tag.id) ? "✓" : "" }}</span>
+        <span>标签</span>
+        <span class="context-menu-submenu-arrow">{{ opensSubmenuLeft ? "‹" : "›" }}</span>
       </button>
-      <div class="context-menu-divider"></div>
-    </template>
-    <button type="button" class="context-menu-item context-menu-item-danger" @click="emit('delete')">
+      <div
+        v-if="props.tags.length > 0"
+        class="context-menu context-menu-submenu"
+        :class="{ 'context-menu-submenu-left': opensSubmenuLeft }"
+        role="menu"
+        aria-label="选择标签"
+      >
+        <button
+          v-for="tag in props.tags"
+          :key="tag.id"
+          type="button"
+          class="context-menu-item"
+          :class="{ 'context-menu-item-selected': props.assignedTagIds.includes(tag.id) }"
+          role="menuitemcheckbox"
+          :aria-checked="props.assignedTagIds.includes(tag.id)"
+          @click="emit('toggleTag', tag.id)"
+        >
+          <span class="tag-color" :style="{ backgroundColor: tag.color }"></span>
+          <span class="tag-name">{{ tag.name }}</span>
+          <span class="tag-selection">{{ props.assignedTagIds.includes(tag.id) ? "✓" : "" }}</span>
+        </button>
+      </div>
+    </div>
+    <div class="context-menu-divider"></div>
+    <button
+      type="button"
+      class="context-menu-item context-menu-item-danger"
+      role="menuitem"
+      @click="emit('delete')"
+    >
       删除
     </button>
   </div>
@@ -46,16 +81,17 @@ const emit = defineEmits<{
 
 <style scoped>
 .context-menu {
+  --context-menu-edge-offset: 5px;
+  --context-menu-submenu-gap: 1px;
   position: fixed;
   z-index: 20;
-  min-width: 140px;
-  max-height: calc(100vh - 16px);
-  overflow-y: auto;
+  box-sizing: border-box;
+  width: 152px;
   padding: 4px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 8px 24px rgb(15 23 42 / 0.14);
+  background: var(--app-surface-elevated);
+  box-shadow: var(--app-shadow);
 }
 
 .context-menu-item {
@@ -66,7 +102,7 @@ const emit = defineEmits<{
   border: 0;
   border-radius: 5px;
   padding: 7px 9px;
-  color: #334155;
+  color: var(--app-text);
   background: transparent;
   font: inherit;
   font-size: 12px;
@@ -74,24 +110,74 @@ const emit = defineEmits<{
   cursor: default;
 }
 
-.context-menu-item:hover {
-  background: #f1f5f9;
+.context-menu-item:hover:not(:disabled) {
+  background: var(--app-hover);
+}
+
+.context-menu-item:disabled {
+  color: var(--app-muted);
 }
 
 .context-menu-item-selected {
-  background: #f8fafc;
+  background: var(--app-active);
 }
 
-.context-menu-label {
-  margin: 3px 5px 5px;
-  color: #94a3b8;
-  font-size: 11px;
+.context-menu-submenu-container {
+  position: relative;
+}
+
+.context-menu-submenu-container::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: calc(var(--context-menu-edge-offset) + var(--context-menu-submenu-gap));
+  content: "";
+}
+
+.context-menu-submenu-container-left::after {
+  right: 100%;
+  left: auto;
+}
+
+.context-menu-submenu-trigger {
+  justify-content: space-between;
+}
+
+.context-menu-submenu-arrow {
+  margin-left: auto;
+  color: var(--app-muted);
+  font-size: 16px;
+  line-height: 12px;
+}
+
+.context-menu-submenu {
+  position: absolute;
+  top: -5px;
+  left: calc(100% + var(--context-menu-edge-offset) + var(--context-menu-submenu-gap));
+  max-height: min(264px, calc(100vh - 16px));
+  overflow-y: auto;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.context-menu-submenu-left {
+  right: calc(100% + var(--context-menu-edge-offset) + var(--context-menu-submenu-gap));
+  left: auto;
+}
+
+.context-menu-submenu-container:hover > .context-menu-submenu,
+.context-menu-submenu-container:focus-within > .context-menu-submenu {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .context-menu-divider {
   height: 1px;
   margin: 4px;
-  background: #eef2f7;
+  background: var(--app-border);
 }
 
 .tag-color {
@@ -101,18 +187,25 @@ const emit = defineEmits<{
   border-radius: 999px;
 }
 
+.tag-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tag-selection {
   min-width: 10px;
   margin-left: auto;
-  color: #4f7cff;
+  color: var(--app-primary);
   text-align: right;
 }
 
 .context-menu-item-danger {
-  color: #dc2626;
+  color: var(--app-danger);
 }
 
 .context-menu-item-danger:hover {
-  background: #fef2f2;
+  background: var(--app-danger-hover);
 }
 </style>

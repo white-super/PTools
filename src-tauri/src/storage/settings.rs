@@ -5,14 +5,40 @@ use tauri::{AppHandle, Manager};
 
 const SETTINGS_FILE_NAME: &str = "settings.json";
 const DEFAULT_MAIN_SHORTCUT: &str = "Ctrl+V";
+const DEFAULT_PREVIOUS_FILTER_SHORTCUT: &str = "Ctrl+Q";
+const DEFAULT_NEXT_FILTER_SHORTCUT: &str = "Ctrl+E";
+const DEFAULT_PREVIOUS_CARD_SHORTCUT: &str = "Ctrl+A";
+const DEFAULT_NEXT_CARD_SHORTCUT: &str = "Ctrl+D";
+const SEARCH_SHORTCUT: &str = "Command+F";
 const DEFAULT_HISTORY_RETENTION_DAYS: u32 = 30;
 const DEFAULT_MAX_HISTORY_ENTRIES: u32 = 200;
 const SUPPORTED_HISTORY_RETENTION_DAYS: [u32; 4] = [0, 7, 30, 90];
 
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AppTheme {
+    #[default]
+    SoftGlow,
+    Classic,
+    Dark,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
+    #[serde(default)]
+    pub theme: AppTheme,
     pub main_shortcut: String,
+    #[serde(default = "default_previous_filter_shortcut")]
+    pub previous_filter_shortcut: String,
+    #[serde(default = "default_next_filter_shortcut")]
+    pub next_filter_shortcut: String,
+    #[serde(default = "default_previous_card_shortcut")]
+    pub previous_card_shortcut: String,
+    #[serde(default = "default_next_card_shortcut")]
+    pub next_card_shortcut: String,
+    #[serde(default)]
+    pub show_format_filters: bool,
     pub history_retention_days: u32,
     pub max_history_entries: u32,
     pub record_text: bool,
@@ -24,7 +50,13 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            theme: AppTheme::default(),
             main_shortcut: DEFAULT_MAIN_SHORTCUT.to_owned(),
+            previous_filter_shortcut: default_previous_filter_shortcut(),
+            next_filter_shortcut: default_next_filter_shortcut(),
+            previous_card_shortcut: default_previous_card_shortcut(),
+            next_card_shortcut: default_next_card_shortcut(),
+            show_format_filters: false,
             history_retention_days: DEFAULT_HISTORY_RETENTION_DAYS,
             max_history_entries: DEFAULT_MAX_HISTORY_ENTRIES,
             record_text: true,
@@ -37,8 +69,36 @@ impl Default for AppSettings {
 
 impl AppSettings {
     pub fn validate(&self) -> StorageResult {
-        if self.main_shortcut.trim().is_empty() {
+        let main_shortcut = self.main_shortcut.trim();
+        let previous_filter_shortcut = self.previous_filter_shortcut.trim();
+        let next_filter_shortcut = self.next_filter_shortcut.trim();
+        let previous_card_shortcut = self.previous_card_shortcut.trim();
+        let next_card_shortcut = self.next_card_shortcut.trim();
+        if main_shortcut.is_empty() {
             return Err("唤醒快捷键不能为空".to_owned());
+        }
+        if previous_filter_shortcut.is_empty()
+            || next_filter_shortcut.is_empty()
+            || previous_card_shortcut.is_empty()
+            || next_card_shortcut.is_empty()
+        {
+            return Err("标签和卡片切换快捷键不能为空".to_owned());
+        }
+        let shortcuts = [
+            main_shortcut,
+            previous_filter_shortcut,
+            next_filter_shortcut,
+            previous_card_shortcut,
+            next_card_shortcut,
+        ];
+        if has_duplicate_shortcuts(&shortcuts) {
+            return Err("唤醒、标签切换和卡片切换快捷键不能重复".to_owned());
+        }
+        if shortcuts
+            .iter()
+            .any(|shortcut| shortcut.eq_ignore_ascii_case(SEARCH_SHORTCUT))
+        {
+            return Err("标签和卡片切换快捷键不能使用搜索快捷键 Command+F".to_owned());
         }
         if self.max_history_entries == 0 {
             return Err("最大历史记录数必须大于 0".to_owned());
@@ -51,6 +111,30 @@ impl AppSettings {
         }
         Ok(())
     }
+}
+
+fn default_previous_filter_shortcut() -> String {
+    DEFAULT_PREVIOUS_FILTER_SHORTCUT.to_owned()
+}
+
+fn default_next_filter_shortcut() -> String {
+    DEFAULT_NEXT_FILTER_SHORTCUT.to_owned()
+}
+
+fn default_previous_card_shortcut() -> String {
+    DEFAULT_PREVIOUS_CARD_SHORTCUT.to_owned()
+}
+
+fn default_next_card_shortcut() -> String {
+    DEFAULT_NEXT_CARD_SHORTCUT.to_owned()
+}
+
+fn has_duplicate_shortcuts(shortcuts: &[&str]) -> bool {
+    shortcuts.iter().enumerate().any(|(index, shortcut)| {
+        shortcuts[..index]
+            .iter()
+            .any(|other| other.eq_ignore_ascii_case(shortcut))
+    })
 }
 
 pub struct SettingsStore {

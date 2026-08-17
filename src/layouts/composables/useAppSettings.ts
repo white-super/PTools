@@ -11,7 +11,13 @@ function errorMessage(error: unknown) {
 
 function settingsSignature(settings: AppSettings) {
   return [
+    settings.theme,
     settings.mainShortcut,
+    settings.previousFilterShortcut,
+    settings.nextFilterShortcut,
+    settings.previousCardShortcut,
+    settings.nextCardShortcut,
+    settings.showFormatFilters,
     settings.historyRetentionDays,
     settings.maxHistoryEntries,
     settings.recordText,

@@ -9,11 +9,16 @@ function reportDismissalError(error: unknown) {
   console.error("Failed to hide the main panel", error);
 }
 
-export function usePanelDismissal() {
+interface UsePanelDismissalOptions {
+  readonly beforeDismiss?: () => void;
+}
+
+export function usePanelDismissal(options: UsePanelDismissalOptions = {}) {
   let disposed = false;
   let unlistenBlur: UnlistenFn | undefined;
 
   function dismissPanel() {
+    options.beforeDismiss?.();
     return invoke<void>("hide_main_panel");
   }
 

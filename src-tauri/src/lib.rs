@@ -1,16 +1,23 @@
+#[cfg(target_os = "macos")]
+use tauri::menu::{Menu, MenuBuilder, SubmenuBuilder};
 use tauri::{App, Manager};
 
 mod cmds;
 mod core;
+mod help_commands;
 mod settings_commands;
 mod storage;
 mod system_permissions;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .manage(cmds::PasteTargetProcessId::default())
-        .enable_macos_default_menu(false)
+        .enable_macos_default_menu(false);
+    #[cfg(target_os = "macos")]
+    let builder = builder.menu(create_edit_menu);
+
+    builder
         .setup(|app| {
             set_up(app).map_err(|error| {
                 Box::new(std::io::Error::other(error)) as Box<dyn std::error::Error>
@@ -27,6 +34,8 @@ pub fn run() {
             cmds::toggle_window,
             cmds::hide_main_panel,
             cmds::paste_into_active_app,
+            help_commands::show_shortcut_help,
+            help_commands::hide_shortcut_help,
             settings_commands::get_app_settings,
             settings_commands::update_app_settings,
             settings_commands::reset_app_settings,
@@ -48,17 +57,33 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+#[cfg(target_os = "macos")]
+fn create_edit_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
+    let edit_menu = SubmenuBuilder::new(app, "Edit")
+        .undo()
+        .redo()
+        .separator()
+        .cut()
+        .copy()
+        .paste()
+        .select_all()
+        .build()?;
+    MenuBuilder::new(app).item(&edit_menu).build()
+}
+
 fn set_up(app: &mut App) -> Result<(), String> {
     let settings_store = storage::SettingsStore::new(app.handle())?;
     let settings = settings_store.load()?;
+    core::handle::Handle::set_app_theme(app.handle(), settings.theme);
     let history_store = storage::HistoryStore::new(app.handle())?;
     let tag_store = storage::TagStore::new(app.handle())?;
-    history_store.list(&settings)?;
+    history_store.cleanup_history(&settings)?;
     app.manage(settings_store);
     app.manage(history_store);
     app.manage(tag_store);
     app.manage(storage::SettingsState::new(settings.clone()));
     core::handle::Handle::create_main_window(app)?;
+    core::help_window::create(app)?;
     core::handle::Handle::create_setting_window(app)?;
     core::handle::Handle::register_shortcuts(app, &settings.main_shortcut)?;
     core::handle::Handle::create_tray_icon(app)?;

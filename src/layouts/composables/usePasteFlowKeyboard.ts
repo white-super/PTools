@@ -1,11 +1,31 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { onMounted, onUnmounted, shallowRef, type Ref } from "vue";
-import type { ClipboardHistoryEntry } from "../types/settings";
+import { onMounted, onUnmounted, shallowRef, watch, type Ref } from "vue";
+import type {
+  ClipboardFilter,
+  ClipboardHistoryEntry,
+  PasteFlowShortcutSettings,
+} from "../types/settings";
+import { matchesKeyboardShortcut } from "../utils/keyboardShortcut";
+
+type ShortcutSettingsRef = Readonly<Ref<PasteFlowShortcutSettings | undefined>>;
+
+interface FilterNavigationOptions {
+  readonly activeFilter: Ref<ClipboardFilter>;
+  readonly filters: Readonly<Ref<readonly ClipboardFilter[]>>;
+  readonly shortcutSettings: ShortcutSettingsRef;
+}
+
+interface CardNavigationOptions {
+  readonly shortcutSettings: ShortcutSettingsRef;
+}
 
 interface UsePasteFlowKeyboardOptions {
   readonly cards: Readonly<Ref<readonly ClipboardHistoryEntry[]>>;
   readonly getCardContainer: () => HTMLElement | null;
+  readonly cardNavigation: CardNavigationOptions;
   readonly closeMenus: () => void;
+  readonly focusSearch: () => void;
+  readonly filterNavigation: FilterNavigationOptions;
   readonly pasteCard: (card: ClipboardHistoryEntry) => void;
   readonly reportError: (error: unknown) => void;
 }
@@ -76,7 +96,63 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
     }
   }
 
+  function selectAdjacentFilter(direction: -1 | 1) {
+    const { activeFilter, filters } = options.filterNavigation;
+    if (filters.value.length === 0) {
+      return;
+    }
+    const currentIndex = Math.max(filters.value.indexOf(activeFilter.value), 0);
+    const nextIndex = (currentIndex + direction + filters.value.length) % filters.value.length;
+    options.closeMenus();
+    activeFilter.value = filters.value[nextIndex];
+  }
+
+  function handleFilterShortcut(event: KeyboardEvent) {
+    const shortcuts = options.filterNavigation.shortcutSettings.value;
+    const direction = configuredDirection(
+      event,
+      shortcuts?.previousFilterShortcut ?? "",
+      shortcuts?.nextFilterShortcut ?? "",
+    );
+    if (!direction) {
+      return false;
+    }
+    event.preventDefault();
+    selectAdjacentFilter(direction);
+    return true;
+  }
+
+  function handleCardShortcut(event: KeyboardEvent) {
+    const shortcuts = options.cardNavigation.shortcutSettings.value;
+    const direction = configuredDirection(
+      event,
+      shortcuts?.previousCardShortcut ?? "",
+      shortcuts?.nextCardShortcut ?? "",
+    );
+    if (!direction) {
+      return false;
+    }
+    event.preventDefault();
+    selectAdjacentCard(direction);
+    return true;
+  }
+
   function handleNavigationKeydown(event: KeyboardEvent) {
+    if (event.metaKey && event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      options.closeMenus();
+      options.focusSearch();
+      return;
+    }
+    if (handleFilterShortcut(event)) {
+      return;
+    }
+    if (handleCardShortcut(event)) {
+      return;
+    }
+    if (isEditableTarget(event.target)) {
+      return;
+    }
     if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
       return;
     }
@@ -101,6 +177,24 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
     }
   }
 
+  function isEditableTarget(target: EventTarget | null) {
+    return target instanceof HTMLInputElement
+      || target instanceof HTMLTextAreaElement
+      || (target instanceof HTMLElement && target.isContentEditable);
+  }
+
+  watch(options.cards, (cards) => {
+    if (!cards.some((card) => card.id === selectedCardId.value)) {
+      selectedCardId.value = cards[0]?.id;
+    }
+  });
+
+  watch(options.filterNavigation.filters, (filters) => {
+    if (!filters.includes(options.filterNavigation.activeFilter.value)) {
+      options.filterNavigation.activeFilter.value = "all";
+    }
+  });
+
   onMounted(() => {
     window.addEventListener("keydown", handleNavigationKeydown);
     void listen(MAIN_PANEL_FOCUS_EVENT, resetSelection)
@@ -121,4 +215,10 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
   });
 
   return { selectedCardId, selectCard };
+}
+
+function configuredDirection(event: KeyboardEvent, previous: string, next: string) {
+  if (matchesKeyboardShortcut(event, previous)) return -1;
+  if (matchesKeyboardShortcut(event, next)) return 1;
+  return undefined;
 }

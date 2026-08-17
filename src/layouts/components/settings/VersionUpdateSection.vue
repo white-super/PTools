@@ -90,7 +90,7 @@ onMounted(() => {
 <style scoped>
 .settings-section {
   padding: 20px 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--app-border);
 }
 
 .version-text {
@@ -105,7 +105,7 @@ onMounted(() => {
 }
 
 .version-text {
-  color: #273449;
+  color: var(--app-heading);
   font-size: 18px;
   font-weight: 600;
 }
@@ -116,7 +116,7 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 14px;
-  color: #718096;
+  color: var(--app-muted);
   font-size: 14px;
 }
 

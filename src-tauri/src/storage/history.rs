@@ -8,6 +8,12 @@ use std::{
 };
 use tauri::{AppHandle, Manager};
 
+mod query;
+#[cfg(test)]
+mod tests;
+
+pub use query::{ClipboardHistoryPage, ClipboardHistoryQuery};
+
 pub(super) const HISTORY_DATABASE_FILE_NAME: &str = "history.sqlite";
 const SECONDS_PER_DAY: i64 = 86_400;
 
@@ -85,34 +91,6 @@ pub struct HistoryStats {
     pub storage_bytes: u64,
 }
 
-struct StoredHistoryEntry {
-    id: i64,
-    format: String,
-    content: String,
-    file_paths: String,
-    updated_at: i64,
-    tag_ids: String,
-}
-
-impl TryFrom<StoredHistoryEntry> for ClipboardHistoryEntry {
-    type Error = String;
-
-    fn try_from(entry: StoredHistoryEntry) -> Result<Self, Self::Error> {
-        let file_paths = serde_json::from_str(&entry.file_paths)
-            .map_err(|error| format!("failed to parse stored file paths: {error}"))?;
-        let tag_ids = serde_json::from_str(&entry.tag_ids)
-            .map_err(|error| format!("failed to parse stored tag ids: {error}"))?;
-        Ok(Self {
-            id: entry.id,
-            format: ClipboardFormat::from_str(&entry.format)?,
-            content: entry.content,
-            file_paths,
-            updated_at: entry.updated_at,
-            tag_ids,
-        })
-    }
-}
-
 pub struct HistoryStore {
     path: PathBuf,
 }
@@ -132,20 +110,25 @@ impl HistoryStore {
         Ok(store)
     }
 
-    pub fn list(&self, settings: &AppSettings) -> StorageResult<Vec<ClipboardHistoryEntry>> {
+    pub fn query(
+        &self,
+        settings: &AppSettings,
+        query: &ClipboardHistoryQuery,
+    ) -> StorageResult<ClipboardHistoryPage> {
         let connection = self.open_connection()?;
         self.cleanup(&connection, settings)?;
-        self.read_entries(&connection)
+        query::query_history(&connection, query)
     }
 
-    pub fn record(
-        &self,
-        entry: ClipboardHistoryInput,
-        settings: &AppSettings,
-    ) -> StorageResult<Vec<ClipboardHistoryEntry>> {
+    pub fn cleanup_history(&self, settings: &AppSettings) -> StorageResult {
+        let connection = self.open_connection()?;
+        self.cleanup(&connection, settings)
+    }
+
+    pub fn record(&self, entry: ClipboardHistoryInput, settings: &AppSettings) -> StorageResult {
         entry.validate()?;
         if !entry.is_enabled(settings) {
-            return self.list(settings);
+            return Ok(());
         }
 
         let now = current_timestamp()?;
@@ -171,14 +154,10 @@ impl HistoryStore {
         transaction
             .commit()
             .map_err(|error| format!("failed to commit clipboard history: {error}"))?;
-        self.list(settings)
+        Ok(())
     }
 
-    pub fn delete(
-        &self,
-        id: i64,
-        settings: &AppSettings,
-    ) -> StorageResult<Vec<ClipboardHistoryEntry>> {
+    pub fn delete(&self, id: i64, settings: &AppSettings) -> StorageResult {
         let mut connection = self.open_connection()?;
         let transaction = connection
             .transaction()
@@ -192,7 +171,7 @@ impl HistoryStore {
         transaction
             .commit()
             .map_err(|error| format!("failed to commit clipboard history deletion: {error}"))?;
-        self.list(settings)
+        self.cleanup_history(settings)
     }
 
     pub fn clear(&self) -> StorageResult {
@@ -206,12 +185,18 @@ impl HistoryStore {
     }
 
     pub fn stats(&self, settings: &AppSettings) -> StorageResult<HistoryStats> {
-        let entries = self.list(settings)?;
+        let connection = self.open_connection()?;
+        self.cleanup(&connection, settings)?;
+        let count = connection
+            .query_row("SELECT COUNT(*) FROM clipboard_history", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .map_err(|error| format!("failed to count clipboard history: {error}"))?;
         let storage_bytes = fs::metadata(&self.path)
             .map_err(|error| format!("failed to read history storage size: {error}"))?
             .len();
         Ok(HistoryStats {
-            count: entries.len() as i64,
+            count,
             storage_bytes,
         })
     }
@@ -261,7 +246,13 @@ impl HistoryStore {
             current_timestamp()? - i64::from(settings.history_retention_days) * SECONDS_PER_DAY;
         connection
             .execute(
-                "DELETE FROM clipboard_history WHERE updated_at < ?1",
+                "DELETE FROM clipboard_history
+                 WHERE updated_at < ?1
+                   AND NOT EXISTS (
+                       SELECT 1
+                       FROM clipboard_history_tag_links
+                       WHERE history_id = clipboard_history.id
+                   )",
                 params![cutoff],
             )
             .map_err(|error| format!("failed to remove expired history: {error}"))?;
@@ -275,38 +266,27 @@ impl HistoryStore {
     ) -> StorageResult {
         connection
             .execute(
-                "DELETE FROM clipboard_history WHERE id NOT IN (SELECT id FROM clipboard_history ORDER BY updated_at DESC, id DESC LIMIT ?1)",
+                "DELETE FROM clipboard_history
+                 WHERE NOT EXISTS (
+                     SELECT 1
+                     FROM clipboard_history_tag_links
+                     WHERE history_id = clipboard_history.id
+                 )
+                   AND id NOT IN (
+                       SELECT history.id
+                       FROM clipboard_history AS history
+                       WHERE NOT EXISTS (
+                           SELECT 1
+                           FROM clipboard_history_tag_links
+                           WHERE history_id = history.id
+                       )
+                       ORDER BY history.updated_at DESC, history.id DESC
+                       LIMIT ?1
+                   )",
                 params![settings.max_history_entries],
             )
             .map_err(|error| format!("failed to trim clipboard history: {error}"))?;
         Ok(())
-    }
-
-    fn read_entries(&self, connection: &Connection) -> StorageResult<Vec<ClipboardHistoryEntry>> {
-        let mut statement = connection
-            .prepare(
-                "SELECT history.id, history.format, history.content, history.file_paths, history.updated_at, COALESCE((SELECT json_group_array(tag_id) FROM clipboard_history_tag_links WHERE history_id = history.id), '[]') FROM clipboard_history AS history ORDER BY history.updated_at DESC, history.id DESC",
-            )
-            .map_err(|error| format!("failed to query clipboard history: {error}"))?;
-        let rows = statement
-            .query_map([], |row| {
-                Ok(StoredHistoryEntry {
-                    id: row.get(0)?,
-                    format: row.get(1)?,
-                    content: row.get(2)?,
-                    file_paths: row.get(3)?,
-                    updated_at: row.get(4)?,
-                    tag_ids: row.get(5)?,
-                })
-            })
-            .map_err(|error| format!("failed to read clipboard history: {error}"))?;
-        let stored_entries = rows
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|error| format!("failed to decode clipboard history: {error}"))?;
-        stored_entries
-            .into_iter()
-            .map(ClipboardHistoryEntry::try_from)
-            .collect()
     }
 }
 

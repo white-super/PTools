@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { shallowRef } from "vue";
+import { computed, nextTick, shallowRef, useTemplateRef, watch } from "vue";
 import { TAG_COLORS } from "../constants/tagColors";
-import type { ClipboardFilter, ClipboardFormat, ClipboardTag, ClipboardTagInput } from "../types/settings";
+import type {
+  ClipboardFilter,
+  ClipboardFormat,
+  ClipboardTag,
+  ClipboardTagInput,
+} from "../types/settings";
+import ShortcutHelpPopover from "./ShortcutHelpPopover.vue";
 import TagContextMenu from "./TagContextMenu.vue";
 import TagInlineEditor from "./TagInlineEditor.vue";
 
@@ -20,6 +26,8 @@ interface TagContextMenuState {
 interface Props {
   readonly tags: readonly ClipboardTag[];
   readonly activeFilter: ClipboardFilter;
+  readonly helpOpen: boolean;
+  readonly showFormatFilters: boolean;
 }
 
 const FORMAT_FILTERS: readonly FilterOption[] = [
@@ -38,15 +46,26 @@ const emit = defineEmits<{
   createTag: [input: ClipboardTagInput];
   updateTag: [id: number, input: ClipboardTagInput];
   deleteTag: [id: number];
+  helpOpenChange: [open: boolean];
 }>();
 const contextMenu = shallowRef<TagContextMenuState>();
 const editingTagId = shallowRef<number>();
 const isCreatingTag = shallowRef(false);
 const editorName = shallowRef("");
 const editorColor = shallowRef<string>(TAG_COLORS[0]);
+const filterList = useTemplateRef<HTMLElement>("filterList");
+const shortcutHelp = useTemplateRef<InstanceType<typeof ShortcutHelpPopover>>("shortcutHelp");
+const visibleFormatFilters = computed(() => (
+  props.showFormatFilters ? FORMAT_FILTERS : FORMAT_FILTERS.slice(0, 1)
+));
 
 function closeTagContextMenu() {
   contextMenu.value = undefined;
+}
+
+function closeMenus() {
+  closeTagContextMenu();
+  shortcutHelp.value?.close();
 }
 
 function selectFilter(filter: ClipboardFilter) {
@@ -110,14 +129,29 @@ function editContextTag() {
   }
 }
 
-defineExpose({ closeTagContextMenu });
+watch(() => props.activeFilter, async (activeFilter) => {
+  await nextTick();
+  const activeButton = filterList.value?.querySelector<HTMLElement>(
+    `[data-filter-key="${activeFilter}"]`,
+  );
+  activeButton?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+});
+
+defineExpose({ closeMenus });
 </script>
 
 <template>
-  <nav class="filter-list" aria-label="按剪贴板格式或标签筛选" @click="closeTagContextMenu">
+  <div class="filter-bar-shell" @click="closeTagContextMenu">
+    <ShortcutHelpPopover
+      ref="shortcutHelp"
+      :open="props.helpOpen"
+      @open-change="emit('helpOpenChange', $event)"
+    />
+    <nav ref="filterList" class="filter-list" aria-label="按剪贴板格式或标签筛选">
     <button
-      v-for="filter in FORMAT_FILTERS"
+      v-for="filter in visibleFormatFilters"
       :key="filter.key"
+      :data-filter-key="filter.key"
       type="button"
       class="filter-button"
       :class="{ 'filter-button-active': props.activeFilter === filter.key }"
@@ -144,6 +178,7 @@ defineExpose({ closeTagContextMenu });
         v-else
         type="button"
         class="filter-button filter-button-tag"
+        :data-filter-key="tag.id"
         :class="{ 'filter-button-active': props.activeFilter === tag.id }"
         @click="selectFilter(tag.id)"
         @contextmenu.prevent.stop="openTagContextMenu(tag, $event)"
@@ -170,13 +205,22 @@ defineExpose({ closeTagContextMenu });
       @edit="editContextTag"
       @delete="deleteTag"
     />
-  </nav>
+    </nav>
+  </div>
 </template>
 
 <style scoped>
+.filter-bar-shell {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
 .filter-list {
   display: flex;
-  flex: 0 0 auto;
+  min-width: 0;
+  flex: 1 1 auto;
   gap: 2px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -197,7 +241,7 @@ defineExpose({ closeTagContextMenu });
   border: 0;
   border-radius: 6px;
   padding: 5px 9px;
-  color: #6b7280;
+  color: var(--panel-filter-text, #6b7280);
   background: transparent;
   font: inherit;
   font-size: 12px;
@@ -213,20 +257,21 @@ defineExpose({ closeTagContextMenu });
   width: 26px;
   justify-content: center;
   padding: 0;
-  color: #64748b;
+  color: var(--panel-add-tag-text, #64748b);
   font-size: 17px;
   line-height: 1;
 }
 
 .filter-button:hover,
 .add-tag-button:hover {
-  color: #374151;
-  background: #eef2f7;
+  color: var(--panel-filter-hover-text, #374151);
+  background: var(--panel-control-hover, rgba(255, 255, 255, 0.4));
 }
 
 .filter-button-active {
-  color: #334155;
-  background: #e5eaf1;
+  color: var(--panel-filter-active-text, #334155);
+  background: var(--panel-control-active, rgba(246, 247, 248, 0.72));
+  box-shadow: var(--panel-filter-active-shadow, none);
 }
 
 .filter-button-tag {

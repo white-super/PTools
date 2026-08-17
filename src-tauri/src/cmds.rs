@@ -121,6 +121,7 @@ fn position_main_panel(
 }
 
 fn hide_main_panel_now(app_handle: &AppHandle) -> CmdResult {
+    crate::core::help_window::hide(app_handle)?;
     let panel = app_handle
         .get_webview_panel("main")
         .map_err(|error| format!("failed to find main panel: {error:?}"))?;
@@ -243,6 +244,9 @@ pub fn toggle_window(app_handle: tauri::AppHandle) {
             return;
         };
         if panel.is_visible() {
+            if let Err(error) = crate::core::help_window::hide(&main_thread_handle) {
+                eprintln!("failed to hide shortcut help panel: {error}");
+            }
             panel.order_out(None);
             return;
         }

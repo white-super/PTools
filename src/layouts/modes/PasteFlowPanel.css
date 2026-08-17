@@ -1,6 +1,47 @@
 .paste-flow-panel {
-  --panel-text: #1f2937;
-  --panel-muted: #6b7280;
+  --panel-text: #45474c;
+  --panel-muted: #777a81;
+  --panel-background:
+    radial-gradient(ellipse 42% 80% at 8% 124%, rgba(213, 168, 185, 0.34), transparent 68%),
+    radial-gradient(ellipse 48% 82% at 55% 128%, rgba(155, 187, 217, 0.36), transparent 70%),
+    radial-gradient(ellipse 36% 76% at 98% 124%, rgba(162, 201, 181, 0.32), transparent 68%),
+    linear-gradient(180deg, #d7d9db 0%, #cfd2d4 58%, #c7cacc 100%);
+  --panel-backdrop: blur(28px) saturate(120%);
+  --panel-control: rgba(249, 249, 250, 0.56);
+  --panel-control-hover: rgba(255, 255, 255, 0.4);
+  --panel-control-active: rgba(246, 247, 248, 0.72);
+  --panel-filter-text: #777a81;
+  --panel-filter-hover-text: #45474c;
+  --panel-filter-active-text: #45474c;
+  --panel-add-tag-text: #777a81;
+  --panel-filter-active-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), 0 1px 3px rgba(74, 78, 84, 0.08);
+  --panel-search-icon: #777a81;
+  --panel-search-border: rgba(102, 107, 115, 0.16);
+  --panel-search-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48), 0 1px 3px rgba(69, 73, 80, 0.06);
+  --panel-search-focus-border: rgba(100, 135, 170, 0.46);
+  --panel-search-focus-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 0 2px rgba(124, 158, 192, 0.14);
+  --panel-search-text: #45474c;
+  --panel-search-placeholder: #8d9096;
+  --panel-control-backdrop: blur(16px) saturate(115%);
+  --panel-card-border: rgba(102, 107, 115, 0.16);
+  --panel-card-text: #45474c;
+  --panel-card-background: rgba(248, 248, 249, 0.7);
+  --panel-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58), 0 3px 12px rgba(70, 74, 81, 0.07);
+  --panel-card-backdrop: blur(18px) saturate(112%);
+  --panel-card-chip-text: #6e7279;
+  --panel-card-chip-background: rgba(221, 223, 226, 0.62);
+  --panel-card-preview-background: rgba(229, 231, 233, 0.46);
+  --panel-card-placeholder-text: #8f939a;
+  --panel-card-file-name: #555960;
+  --panel-card-hover-border: rgba(91, 96, 104, 0.25);
+  --panel-card-hover-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64), 0 8px 20px rgba(70, 74, 81, 0.1);
+  --panel-card-selected-border: rgba(111, 151, 190, 0.48);
+  --panel-card-selected-background: rgba(242, 247, 251, 0.76);
+  --panel-card-selected-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66), 0 0 0 2px rgba(128, 164, 199, 0.22);
+  --panel-empty-border: rgba(103, 108, 117, 0.24);
+  --panel-empty-background: rgba(247, 248, 249, 0.42);
+  --panel-empty-title: #55585e;
+  --panel-empty-backdrop: blur(14px) saturate(115%);
   display: flex;
   box-sizing: border-box;
   height: 100%;
@@ -10,7 +51,114 @@
   gap: 8px;
   padding: 10px 14px 14px;
   color: var(--panel-text);
-  background: #f6f7f9;
+  background: var(--panel-background);
+  backdrop-filter: var(--panel-backdrop);
+  transition: color 0.2s ease, background 0.2s ease;
+  -webkit-backdrop-filter: var(--panel-backdrop);
+}
+
+.paste-flow-panel.theme-classic {
+  --panel-text: #1f2937;
+  --panel-muted: #6b7280;
+  --panel-background: #f6f7f9;
+  --panel-backdrop: none;
+  --panel-control: rgba(255, 255, 255, 0.92);
+  --panel-control-hover: #eef2f7;
+  --panel-control-active: #e5eaf1;
+  --panel-filter-text: #6b7280;
+  --panel-filter-hover-text: #374151;
+  --panel-filter-active-text: #334155;
+  --panel-add-tag-text: #64748b;
+  --panel-filter-active-shadow: none;
+  --panel-search-icon: #94a3b8;
+  --panel-search-border: #d8dee8;
+  --panel-search-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --panel-search-focus-border: #60a5fa;
+  --panel-search-focus-shadow: 0 0 0 2px rgba(96, 165, 250, 0.16);
+  --panel-search-text: #334155;
+  --panel-search-placeholder: #9ca3af;
+  --panel-control-backdrop: none;
+  --panel-card-border: #e5e7eb;
+  --panel-card-text: #374151;
+  --panel-card-background: #ffffff;
+  --panel-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --panel-card-backdrop: none;
+  --panel-card-chip-text: #64748b;
+  --panel-card-chip-background: #f1f5f9;
+  --panel-card-preview-background: #f8fafc;
+  --panel-card-placeholder-text: #94a3b8;
+  --panel-card-file-name: #475569;
+  --panel-card-hover-border: #cbd5e1;
+  --panel-card-hover-shadow: 0 7px 18px rgba(15, 23, 42, 0.08);
+  --panel-card-selected-border: #93c5fd;
+  --panel-card-selected-background: #f8fbff;
+  --panel-card-selected-shadow: 0 0 0 2px rgba(147, 197, 253, 0.34);
+  --panel-empty-border: #d1d5db;
+  --panel-empty-background: rgba(255, 255, 255, 0.55);
+  --panel-empty-title: #4b5563;
+  --panel-empty-backdrop: none;
+}
+
+.paste-flow-panel.theme-dark {
+  --panel-text: #e6e8eb;
+  --panel-muted: #969ca5;
+  --panel-background:
+    radial-gradient(ellipse 48% 78% at 12% 122%, rgba(112, 74, 90, 0.2), transparent 70%),
+    radial-gradient(ellipse 52% 82% at 58% 126%, rgba(68, 94, 123, 0.22), transparent 72%),
+    linear-gradient(180deg, #1b1d20 0%, #131517 100%);
+  --panel-backdrop: blur(28px) saturate(110%);
+  --panel-control: rgba(42, 45, 50, 0.88);
+  --panel-control-hover: #30343a;
+  --panel-control-active: #383d44;
+  --panel-filter-text: #a5abb4;
+  --panel-filter-hover-text: #eceef0;
+  --panel-filter-active-text: #f4f5f6;
+  --panel-add-tag-text: #a5abb4;
+  --panel-filter-active-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --panel-search-icon: #8e959f;
+  --panel-search-border: #3d4249;
+  --panel-search-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 2px 6px rgba(0, 0, 0, 0.16);
+  --panel-search-focus-border: #72a7dc;
+  --panel-search-focus-shadow: 0 0 0 2px rgba(114, 167, 220, 0.18);
+  --panel-search-text: #eef0f2;
+  --panel-search-placeholder: #777e88;
+  --panel-control-backdrop: blur(16px) saturate(108%);
+  --panel-card-border: #373c43;
+  --panel-card-text: #e2e5e8;
+  --panel-card-background: rgba(35, 38, 42, 0.92);
+  --panel-card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 4px 14px rgba(0, 0, 0, 0.22);
+  --panel-card-backdrop: blur(18px) saturate(106%);
+  --panel-card-chip-text: #b0b6be;
+  --panel-card-chip-background: #30343a;
+  --panel-card-preview-background: #1d2024;
+  --panel-card-placeholder-text: #848b95;
+  --panel-card-file-name: #c8ccd2;
+  --panel-card-hover-border: #555d67;
+  --panel-card-hover-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 22px rgba(0, 0, 0, 0.3);
+  --panel-card-selected-border: #72a7dc;
+  --panel-card-selected-background: #292f36;
+  --panel-card-selected-shadow: 0 0 0 2px rgba(114, 167, 220, 0.22);
+  --panel-empty-border: #434951;
+  --panel-empty-background: rgba(34, 37, 41, 0.66);
+  --panel-empty-title: #d8dbe0;
+  --panel-empty-backdrop: blur(14px) saturate(108%);
+}
+
+.panel-toolbar {
+  display: grid;
+  min-width: 0;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-search {
+  grid-column: 2;
+}
+
+.panel-filters {
+  min-width: 0;
 }
 
 .card-container {
@@ -44,10 +192,12 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--panel-empty-border);
   border-radius: 12px;
   color: var(--panel-muted);
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--panel-empty-background);
+  backdrop-filter: var(--panel-empty-backdrop);
+  -webkit-backdrop-filter: var(--panel-empty-backdrop);
 }
 
 .empty-state-title,
@@ -56,7 +206,7 @@
 }
 
 .empty-state-title {
-  color: #4b5563;
+  color: var(--panel-empty-title);
   font-size: 14px;
   font-weight: 600;
 }

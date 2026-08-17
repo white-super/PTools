@@ -23,7 +23,7 @@ import BodyMode from "../modes/PasteFlowPanel.vue"
   inset: 0;
   min-height: 0;
   overflow: hidden;
-  background: #f6f7f9;
+  background: var(--app-background);
 }
 
 .main-panel > :last-child {

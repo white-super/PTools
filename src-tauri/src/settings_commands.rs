@@ -1,8 +1,9 @@
 use crate::{
     core::handle::Handle,
     storage::{
-        AppSettings, ClipboardHistoryEntry, ClipboardHistoryInput, ClipboardTag, ClipboardTagInput,
-        HistoryStats, HistoryStore, SettingsState, SettingsStore, TagStore,
+        AppSettings, ClipboardHistoryInput, ClipboardHistoryPage, ClipboardHistoryQuery,
+        ClipboardTag, ClipboardTagInput, HistoryStats, HistoryStore, SettingsState, SettingsStore,
+        TagStore,
     },
 };
 use tauri::{AppHandle, Emitter, Manager};
@@ -29,18 +30,21 @@ pub fn reset_app_settings(app_handle: AppHandle) -> CmdResult<AppSettings> {
 }
 
 #[tauri::command]
-pub fn get_clipboard_history(app_handle: AppHandle) -> CmdResult<Vec<ClipboardHistoryEntry>> {
+pub fn get_clipboard_history(
+    app_handle: AppHandle,
+    query: ClipboardHistoryQuery,
+) -> CmdResult<ClipboardHistoryPage> {
     let settings = app_handle.state::<SettingsState>().get()?;
-    app_handle.state::<HistoryStore>().list(&settings)
+    app_handle.state::<HistoryStore>().query(&settings, &query)
 }
 
 #[tauri::command]
-pub fn record_clipboard_history(
-    app_handle: AppHandle,
-    entry: ClipboardHistoryInput,
-) -> CmdResult<Vec<ClipboardHistoryEntry>> {
+pub fn record_clipboard_history(app_handle: AppHandle, entry: ClipboardHistoryInput) -> CmdResult {
     let settings = app_handle.state::<SettingsState>().get()?;
-    app_handle.state::<HistoryStore>().record(entry, &settings)
+    app_handle
+        .state::<HistoryStore>()
+        .record(entry, &settings)?;
+    emit_history_update(&app_handle)
 }
 
 #[tauri::command]
@@ -72,37 +76,24 @@ pub fn update_clipboard_tag(
 #[tauri::command]
 pub fn delete_clipboard_tag(app_handle: AppHandle, id: i64) -> CmdResult<Vec<ClipboardTag>> {
     let tags = app_handle.state::<TagStore>().delete(id)?;
-    let settings = app_handle.state::<SettingsState>().get()?;
-    let history = app_handle.state::<HistoryStore>().list(&settings)?;
     emit_tag_update(&app_handle, tags.clone())?;
-    emit_history_update(&app_handle, history)?;
+    emit_history_update(&app_handle)?;
     Ok(tags)
 }
 
 #[tauri::command]
-pub fn set_clipboard_history_tags(
-    app_handle: AppHandle,
-    id: i64,
-    tag_ids: Vec<i64>,
-) -> CmdResult<Vec<ClipboardHistoryEntry>> {
+pub fn set_clipboard_history_tags(app_handle: AppHandle, id: i64, tag_ids: Vec<i64>) -> CmdResult {
     app_handle
         .state::<TagStore>()
         .set_history_tags(id, &tag_ids)?;
-    let settings = app_handle.state::<SettingsState>().get()?;
-    let history = app_handle.state::<HistoryStore>().list(&settings)?;
-    emit_history_update(&app_handle, history.clone())?;
-    Ok(history)
+    Ok(())
 }
 
 #[tauri::command]
-pub fn delete_clipboard_history(
-    app_handle: AppHandle,
-    id: i64,
-) -> CmdResult<Vec<ClipboardHistoryEntry>> {
+pub fn delete_clipboard_history(app_handle: AppHandle, id: i64) -> CmdResult {
     let settings = app_handle.state::<SettingsState>().get()?;
-    let history = app_handle.state::<HistoryStore>().delete(id, &settings)?;
-    emit_history_update(&app_handle, history.clone())?;
-    Ok(history)
+    app_handle.state::<HistoryStore>().delete(id, &settings)?;
+    emit_history_update(&app_handle)
 }
 
 #[tauri::command]
@@ -111,7 +102,7 @@ pub fn clear_clipboard_history(app_handle: AppHandle) -> CmdResult<HistoryStats>
     let history_store = app_handle.state::<HistoryStore>();
     history_store.clear()?;
     let stats = history_store.stats(&settings)?;
-    emit_history_update(&app_handle, Vec::new())?;
+    emit_history_update(&app_handle)?;
     Ok(stats)
 }
 
@@ -147,17 +138,20 @@ fn apply_settings(app_handle: &AppHandle, settings: AppSettings) -> CmdResult<Ap
     }
 
     settings_state.replace(settings.clone())?;
-    let history = app_handle.state::<HistoryStore>().list(&settings)?;
-    emit_history_update(app_handle, history)?;
+    Handle::set_app_theme(app_handle, settings.theme);
     app_handle
-        .emit_to("main", SETTINGS_UPDATED_EVENT, &settings)
-        .map_err(|error| format!("failed to notify main panel about settings: {error}"))?;
+        .state::<HistoryStore>()
+        .cleanup_history(&settings)?;
+    emit_history_update(app_handle)?;
+    app_handle
+        .emit(SETTINGS_UPDATED_EVENT, &settings)
+        .map_err(|error| format!("failed to notify application windows about settings: {error}"))?;
     Ok(settings)
 }
 
-fn emit_history_update(app_handle: &AppHandle, history: Vec<ClipboardHistoryEntry>) -> CmdResult {
+fn emit_history_update(app_handle: &AppHandle) -> CmdResult {
     app_handle
-        .emit_to("main", HISTORY_UPDATED_EVENT, history)
+        .emit_to("main", HISTORY_UPDATED_EVENT, ())
         .map_err(|error| format!("failed to notify main panel about history: {error}"))
 }
 
