@@ -11,6 +11,12 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/white-super/PTools/releases">
+    <img src="https://img.shields.io/github/downloads/white-super/PTools/total?style=flat-square&amp;label=Downloads" alt="GitHub Downloads" />
+  </a>
+</p>
+
+<p align="center">
   <a href="#界面预览">界面预览</a> · <a href="#下载与安装">下载与安装</a> · <a href="#主要功能">主要功能</a> · <a href="#使用方法">使用方法</a> · <a href="CHANGELOG.md">版本历史</a> · <a href="#隐私与权限">隐私与权限</a> · <a href="#开源许可">开源许可</a>
 </p>
 
