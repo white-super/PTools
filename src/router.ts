@@ -4,10 +4,13 @@ import Main from "./layouts/pages/Main.vue";
 import Setting from "./layouts/pages/Setting.vue";
 import ShortcutHelp from "./layouts/pages/ShortcutHelp.vue";
 
+const TextFormatter = () => import("./layouts/pages/TextFormatter.vue");
+
 const routes: Array<RouteRecordRaw> = [
     { path: "/", component: Main },
     { path: '/setting', component: Setting },
     { path: '/shortcut-help', component: ShortcutHelp },
+    { path: '/formatter', component: TextFormatter },
 ];
 
 const router = createRouter({

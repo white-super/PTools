@@ -1,5 +1,6 @@
 use crate::{cmds, storage::AppTheme};
 use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{
@@ -12,8 +13,8 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 const NS_POP_UP_MENU_WINDOW_LEVEL: i32 = 101;
 const MAIN_PANEL_WINDOW_LEVEL: i32 = NS_POP_UP_MENU_WINDOW_LEVEL;
 const NS_WINDOW_STYLE_MASK_NON_ACTIVATING_PANEL: i32 = 1 << 7;
-const WINDOW_FOCUS_EVENT: &str = "tauri://focus";
-const WINDOW_BLUR_EVENT: &str = "tauri://blur";
+const WINDOW_FOCUS_EVENT: &str = "ptools://main-panel-focus";
+const WINDOW_BLUR_EVENT: &str = "ptools://main-panel-blur";
 const WINDOW_MOVED_EVENT: &str = "tauri://move";
 const WINDOW_RESIZED_EVENT: &str = "tauri://resize";
 const SETTINGS_WINDOW_INITIAL_WIDTH: f64 = 1100.0;
@@ -23,6 +24,21 @@ const SETTINGS_WINDOW_MIN_HEIGHT: f64 = 680.0;
 const MENU_BAR_ICON: Image<'_> = tauri::include_image!("./icons/menu-bar-template.png");
 #[derive(Debug, Default, Clone)]
 pub struct Handle {}
+
+#[derive(Default)]
+pub struct MainPanelState {
+    suppress_next_blur: AtomicBool,
+}
+
+impl MainPanelState {
+    pub(crate) fn suppress_next_blur(&self) {
+        self.suppress_next_blur.store(true, Ordering::Release);
+    }
+
+    fn take_blur_suppression(&self) -> bool {
+        self.suppress_next_blur.swap(false, Ordering::AcqRel)
+    }
+}
 
 impl Handle {
     pub fn set_app_theme(app_handle: &AppHandle, app_theme: AppTheme) {
@@ -74,6 +90,7 @@ impl Handle {
             window_did_become_key,
             window_did_resign_key
         });
+        let app_handle = app.handle().clone();
         delegate.set_listener(Box::new(move |delegate_name: String| {
             let target = EventTarget::labeled("main");
             let window_move_event = || {
@@ -87,7 +104,10 @@ impl Handle {
                     let _ = window.emit_to(target, WINDOW_FOCUS_EVENT, true);
                 }
                 "window_did_resign_key" => {
-                    let _ = window.emit_to(target, WINDOW_BLUR_EVENT, true);
+                    let panel_state = app_handle.state::<MainPanelState>();
+                    if !panel_state.take_blur_suppression() {
+                        let _ = window.emit_to(target, WINDOW_BLUR_EVENT, true);
+                    }
                 }
                 "window_did_resize" => {
                     window_move_event();
@@ -253,5 +273,19 @@ impl Handle {
             .build(app)
             .map_err(|error| format!("failed to create tray icon: {error}"))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MainPanelState;
+
+    #[test]
+    fn programmatic_hide_suppresses_only_the_next_blur() {
+        let state = MainPanelState::default();
+        state.suppress_next_blur();
+
+        assert!(state.take_blur_suppression());
+        assert!(!state.take_blur_suppression());
     }
 }

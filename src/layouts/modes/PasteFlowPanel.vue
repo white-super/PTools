@@ -12,6 +12,7 @@ import { usePanelDismissal } from "../composables/usePanelDismissal";
 import { usePanelEmptyState } from "../composables/usePanelEmptyState";
 import { MAX_QUICK_SELECT_CARDS, usePasteFlowKeyboard } from "../composables/usePasteFlowKeyboard";
 import { useShortcutHelpPanel } from "../composables/useShortcutHelpPanel";
+import { useTextFormatterLauncher } from "../composables/useTextFormatterLauncher";
 import type { ClipboardFilter, ClipboardHistoryEntry, ClipboardTagInput } from "../types/settings";
 interface CardContextMenuState {
   readonly cardId: number;
@@ -40,6 +41,7 @@ const {
   tags,
   updateTag,
 } = useClipboardHistory();
+const { openTextFormatter } = useTextFormatterLauncher();
 const isPasting = shallowRef(false);
 const contextMenu = shallowRef<CardContextMenuState>();
 const cardContainer = useTemplateRef<HTMLDivElement>("cardContainer");
@@ -225,6 +227,7 @@ const { selectedCardId, selectCard } = usePasteFlowKeyboard({
     shortcutSettings: settings,
   },
   focusSearch: () => searchInput.value?.focus(),
+  formatCard: openTextFormatter,
   pasteCard: (card) => void handlePaste(card),
   reportError: (error) => reportPanelError("listen for main panel focus", error),
 });
