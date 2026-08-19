@@ -1,8 +1,8 @@
+use crate::platform;
 use tauri::{
     App, AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize, Position, Size,
     WebviewUrl, WebviewWindowBuilder,
 };
-use tauri_nspanel::{cocoa::appkit::NSWindowCollectionBehavior, ManagerExt, WebviewWindowExt};
 
 pub const VISIBILITY_EVENT: &str = "shortcut-help-visibility-changed";
 const HELP_WINDOW_LABEL: &str = "shortcut-help";
@@ -10,8 +10,6 @@ const HELP_WINDOW_WIDTH: f64 = 320.0;
 const HELP_WINDOW_HEIGHT: f64 = 450.0;
 const HELP_WINDOW_LEFT_OFFSET: f64 = 14.0;
 const HELP_WINDOW_BOTTOM_GAP: f64 = 8.0;
-const NS_POP_UP_MENU_WINDOW_LEVEL: i32 = 101;
-const NS_WINDOW_STYLE_MASK_NON_ACTIVATING_PANEL: i32 = 1 << 7;
 
 pub fn create(app: &mut App) -> Result<(), String> {
     let window = WebviewWindowBuilder::new(
@@ -33,35 +31,17 @@ pub fn create(app: &mut App) -> Result<(), String> {
     .build()
     .map_err(|error| format!("failed to create shortcut help window: {error}"))?;
 
-    let panel = window
-        .to_panel()
-        .map_err(|error| format!("failed to convert shortcut help window to panel: {error:?}"))?;
-    panel.set_floating_panel(true);
-    panel.set_becomes_key_only_if_needed(true);
-    panel.set_level(NS_POP_UP_MENU_WINDOW_LEVEL);
-    panel.set_style_mask(NS_WINDOW_STYLE_MASK_NON_ACTIVATING_PANEL);
-    panel.set_hides_on_deactivate(false);
-    panel.set_collection_behaviour(
-        NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-            | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
-    );
-    Ok(())
+    platform::initialize_help_window(window)
 }
 
 pub fn show(app_handle: &AppHandle) -> Result<(), String> {
     position_above_main_panel(app_handle)?;
-    let panel = app_handle
-        .get_webview_panel(HELP_WINDOW_LABEL)
-        .map_err(|error| format!("failed to find shortcut help panel: {error:?}"))?;
-    panel.order_front_regardless();
+    platform::show_help_window(app_handle, HELP_WINDOW_LABEL)?;
     emit_visibility(app_handle, true)
 }
 
 pub fn hide(app_handle: &AppHandle) -> Result<(), String> {
-    let panel = app_handle
-        .get_webview_panel(HELP_WINDOW_LABEL)
-        .map_err(|error| format!("failed to find shortcut help panel: {error:?}"))?;
-    panel.order_out(None);
+    platform::hide_help_window(app_handle, HELP_WINDOW_LABEL)?;
     emit_visibility(app_handle, false)
 }
 

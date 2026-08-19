@@ -157,11 +157,12 @@ export function useClipboardHistory() {
 
   async function ensureAutomaticPastePermission() {
     let status = await invoke<SystemPermissionStatus>("get_system_permission_status");
+    if (!status.automaticPasteSupported) {
+      throw new Error(`${status.systemName} 暂不支持自动粘贴`);
+    }
+    if (!status.accessibilityPermissionSupported) return;
     if (!status.accessibilityPermissionGranted) {
       status = await invoke<SystemPermissionStatus>("request_system_permission");
-    }
-    if (!status.accessibilityPermissionSupported) {
-      throw new Error(`${status.systemName} 暂不支持自动粘贴`);
     }
     if (!status.accessibilityPermissionGranted) {
       throw new Error("自动粘贴需要“辅助功能”权限。请先在设置中打开系统权限后重试。");

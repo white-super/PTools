@@ -13,6 +13,10 @@ const {
   refreshPermissionStatus,
 } = useSystemPermission();
 
+const shouldShowPermissionSection = computed(() =>
+  error.value !== undefined || permissionStatus.value?.accessibilityPermissionSupported === true,
+);
+
 const permissionStatusText = computed(() => {
   if (!permissionStatus.value?.accessibilityPermissionSupported) {
     return "当前系统不支持";
@@ -28,6 +32,7 @@ const permissionStatusType = computed<PermissionTagType>(() => {
 });
 
 function refreshWhenWindowFocused() {
+  if (permissionStatus.value?.accessibilityPermissionSupported === false) return;
   void refreshPermissionStatus();
 }
 
@@ -42,7 +47,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="settings-section">
+  <section v-if="shouldShowPermissionSection" class="settings-section">
     <div v-if="isLoading" class="permission-loading">正在检查系统权限…</div>
     <template v-else>
       <el-alert v-if="error" class="permission-error" :title="error" type="error" :closable="false" show-icon />

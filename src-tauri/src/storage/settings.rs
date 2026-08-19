@@ -1,10 +1,10 @@
 use super::StorageResult;
+use crate::platform;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, sync::RwLock};
 use tauri::{AppHandle, Manager};
 
 const SETTINGS_FILE_NAME: &str = "settings.json";
-const DEFAULT_MAIN_SHORTCUT: &str = "Ctrl+V";
 const DEFAULT_PREVIOUS_FILTER_SHORTCUT: &str = "Ctrl+Q";
 const DEFAULT_NEXT_FILTER_SHORTCUT: &str = "Ctrl+E";
 const DEFAULT_PREVIOUS_CARD_SHORTCUT: &str = "Ctrl+A";
@@ -51,7 +51,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             theme: AppTheme::default(),
-            main_shortcut: DEFAULT_MAIN_SHORTCUT.to_owned(),
+            main_shortcut: platform::DEFAULT_MAIN_SHORTCUT.to_owned(),
             previous_filter_shortcut: default_previous_filter_shortcut(),
             next_filter_shortcut: default_next_filter_shortcut(),
             previous_card_shortcut: default_previous_card_shortcut(),
@@ -203,5 +203,18 @@ impl SettingsState {
             .map_err(|_| "failed to update application settings".to_owned())?;
         *current_settings = settings;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AppSettings;
+
+    #[test]
+    fn default_main_shortcut_matches_the_current_platform() {
+        assert_eq!(
+            AppSettings::default().main_shortcut,
+            crate::platform::DEFAULT_MAIN_SHORTCUT
+        );
     }
 }

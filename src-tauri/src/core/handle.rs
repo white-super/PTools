@@ -1,44 +1,16 @@
-use crate::{cmds, storage::AppTheme};
+use crate::{cmds, platform, storage::AppTheme};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::{
-    image::Image, App, AppHandle, Emitter, EventTarget, Manager, Theme, TitleBarStyle, WebviewUrl,
-    WebviewWindowBuilder, WindowEvent,
-};
-use tauri_nspanel::{cocoa::appkit::NSWindowCollectionBehavior, panel_delegate, WebviewWindowExt};
+use tauri::{App, AppHandle, Manager, Theme, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
-const NS_POP_UP_MENU_WINDOW_LEVEL: i32 = 101;
-const MAIN_PANEL_WINDOW_LEVEL: i32 = NS_POP_UP_MENU_WINDOW_LEVEL;
-const NS_WINDOW_STYLE_MASK_NON_ACTIVATING_PANEL: i32 = 1 << 7;
-const WINDOW_FOCUS_EVENT: &str = "ptools://main-panel-focus";
-const WINDOW_BLUR_EVENT: &str = "ptools://main-panel-blur";
-const WINDOW_MOVED_EVENT: &str = "tauri://move";
-const WINDOW_RESIZED_EVENT: &str = "tauri://resize";
 const SETTINGS_WINDOW_INITIAL_WIDTH: f64 = 1100.0;
 const SETTINGS_WINDOW_INITIAL_HEIGHT: f64 = 760.0;
 const SETTINGS_WINDOW_MIN_WIDTH: f64 = 1024.0;
 const SETTINGS_WINDOW_MIN_HEIGHT: f64 = 680.0;
-const MENU_BAR_ICON: Image<'_> = tauri::include_image!("./icons/menu-bar-template.png");
 #[derive(Debug, Default, Clone)]
 pub struct Handle {}
-
-#[derive(Default)]
-pub struct MainPanelState {
-    suppress_next_blur: AtomicBool,
-}
-
-impl MainPanelState {
-    pub(crate) fn suppress_next_blur(&self) {
-        self.suppress_next_blur.store(true, Ordering::Release);
-    }
-
-    fn take_blur_suppression(&self) -> bool {
-        self.suppress_next_blur.swap(false, Ordering::AcqRel)
-    }
-}
 
 impl Handle {
     pub fn set_app_theme(app_handle: &AppHandle, app_theme: AppTheme) {
@@ -50,80 +22,29 @@ impl Handle {
     }
 
     pub fn create_main_window(app: &mut App) -> Result<(), String> {
-        let win_builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
-            .title("PTools")
-            .position(0.0, 0.0)
-            .decorations(false)
-            .resizable(false)
-            .fullscreen(false)
-            .always_on_top(true)
-            .visible(false)
-            .skip_taskbar(true)
-            .hidden_title(true)
-            .closable(false)
-            .minimizable(false)
-            .visible_on_all_workspaces(true)
-            .inner_size(
-                cmds::MAIN_PANEL_INITIAL_WIDTH,
-                cmds::MAIN_PANEL_INITIAL_HEIGHT,
-            );
+        let win_builder =
+            WebviewWindowBuilder::new(app, platform::MAIN_PANEL_LABEL, WebviewUrl::default())
+                .title("PTools")
+                .position(0.0, 0.0)
+                .decorations(false)
+                .resizable(false)
+                .fullscreen(false)
+                .always_on_top(true)
+                .visible(false)
+                .skip_taskbar(true)
+                .closable(false)
+                .minimizable(false)
+                .visible_on_all_workspaces(true)
+                .inner_size(
+                    platform::MAIN_PANEL_INITIAL_WIDTH,
+                    platform::MAIN_PANEL_INITIAL_HEIGHT,
+                );
 
-        #[cfg(target_os = "macos")]
-        let win_builder = win_builder.title_bar_style(TitleBarStyle::Transparent);
-
-        let window = win_builder
+        let window = platform::configure_main_window_builder(win_builder)
             .build()
             .map_err(|error| format!("failed to create main window: {error}"))?;
 
-        let panel = window
-            .to_panel()
-            .map_err(|error| format!("failed to convert main window to panel: {error}"))?;
-        panel.set_floating_panel(true);
-        panel.set_level(MAIN_PANEL_WINDOW_LEVEL);
-        panel.set_style_mask(NS_WINDOW_STYLE_MASK_NON_ACTIVATING_PANEL);
-        panel.set_hides_on_deactivate(false);
-        panel.set_collection_behaviour(
-            NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-                | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
-        );
-        let delegate = panel_delegate!(MyPanelDelegate {
-            window_did_become_key,
-            window_did_resign_key
-        });
-        let app_handle = app.handle().clone();
-        delegate.set_listener(Box::new(move |delegate_name: String| {
-            let target = EventTarget::labeled("main");
-            let window_move_event = || {
-                if let Ok(position) = window.outer_position() {
-                    let _ = window.emit_to(target.clone(), WINDOW_MOVED_EVENT, position);
-                }
-            };
-
-            match delegate_name.as_str() {
-                "window_did_become_key" => {
-                    let _ = window.emit_to(target, WINDOW_FOCUS_EVENT, true);
-                }
-                "window_did_resign_key" => {
-                    let panel_state = app_handle.state::<MainPanelState>();
-                    if !panel_state.take_blur_suppression() {
-                        let _ = window.emit_to(target, WINDOW_BLUR_EVENT, true);
-                    }
-                }
-                "window_did_resize" => {
-                    window_move_event();
-
-                    if let Ok(size) = window.inner_size() {
-                        let _ = window.emit_to(target, WINDOW_RESIZED_EVENT, size);
-                    }
-                }
-                // 当窗口位置改变时调用
-                "window_did_move" => window_move_event(),
-                _ => (),
-            }
-        }));
-
-        panel.set_delegate(delegate);
-        Ok(())
+        platform::initialize_main_panel(app, window)
     }
 
     pub fn create_setting_window(app: &mut App) -> Result<(), String> {
@@ -139,9 +60,8 @@ impl Handle {
                     SETTINGS_WINDOW_INITIAL_HEIGHT,
                 )
                 .min_inner_size(SETTINGS_WINDOW_MIN_WIDTH, SETTINGS_WINDOW_MIN_HEIGHT)
-                .title_bar_style(TitleBarStyle::Transparent)
                 .center();
-        let window = win_builder
+        let window = platform::configure_settings_window_builder(win_builder)
             .build()
             .map_err(|error| format!("failed to create settings window: {error}"))?;
         let app_handle = app.handle().clone();
@@ -240,6 +160,20 @@ impl Handle {
         }
     }
 
+    fn show_setting_window(app_handle: &AppHandle) {
+        let Some(window) = app_handle.get_webview_window("setting") else {
+            eprintln!("failed to show settings window: window was not found");
+            return;
+        };
+        if let Err(error) = window
+            .unminimize()
+            .and_then(|_| window.show())
+            .and_then(|_| window.set_focus())
+        {
+            eprintln!("failed to show settings window: {error}");
+        }
+    }
+
     fn hide_setting_window(app_handle: &AppHandle) {
         let Some(window) = app_handle.get_webview_window("setting") else {
             eprintln!("failed to hide settings window: window was not found");
@@ -259,6 +193,7 @@ impl Handle {
             .map_err(|error| format!("failed to create tray menu: {error}"))?;
         TrayIconBuilder::new()
             .menu(&menu)
+            .menu_on_left_click(platform::TRAY_MENU_ON_LEFT_CLICK)
             .on_menu_event(|app, event| match event.id.as_ref() {
                 "quit" => {
                     app.exit(0);
@@ -268,24 +203,15 @@ impl Handle {
                 }
                 _ => {}
             })
-            .icon(MENU_BAR_ICON)
-            .icon_as_template(true)
+            .on_tray_icon_event(|tray, event| {
+                if platform::tray_event_opens_settings(&event) {
+                    Self::show_setting_window(tray.app_handle());
+                }
+            })
+            .icon(platform::TRAY_ICON)
+            .icon_as_template(platform::TRAY_ICON_IS_TEMPLATE)
             .build(app)
             .map_err(|error| format!("failed to create tray icon: {error}"))?;
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::MainPanelState;
-
-    #[test]
-    fn programmatic_hide_suppresses_only_the_next_blur() {
-        let state = MainPanelState::default();
-        state.suppress_next_blur();
-
-        assert!(state.take_blur_suppression());
-        assert!(!state.take_blur_suppression());
     }
 }

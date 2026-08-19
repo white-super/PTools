@@ -1,11 +1,10 @@
-#[cfg(target_os = "macos")]
-use tauri::menu::{Menu, MenuBuilder, SubmenuBuilder};
 use tauri::{App, Manager};
 
 mod cmds;
 mod core;
 mod formatter_commands;
 mod help_commands;
+mod platform;
 mod settings_commands;
 mod storage;
 mod system_permissions;
@@ -13,13 +12,10 @@ mod system_permissions;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
-        .manage(cmds::PasteTargetProcessId::default())
-        .manage(core::handle::MainPanelState::default())
+        .manage(platform::PasteTargetState::default())
+        .manage(platform::MainPanelState::default())
         .enable_macos_default_menu(false);
-    #[cfg(target_os = "macos")]
-    let builder = builder.menu(create_edit_menu);
-
-    builder
+    let builder = builder
         .setup(|app| {
             set_up(app).map_err(|error| {
                 Box::new(std::io::Error::other(error)) as Box<dyn std::error::Error>
@@ -29,8 +25,8 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_nspanel::init())
+        .plugin(tauri_plugin_updater::Builder::new().build());
+    platform::configure_builder(builder)
         .plugin(tauri_plugin_clipboard::init())
         .invoke_handler(tauri::generate_handler![
             cmds::toggle_window,
@@ -64,20 +60,6 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-#[cfg(target_os = "macos")]
-fn create_edit_menu(app: &tauri::AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
-    let edit_menu = SubmenuBuilder::new(app, "Edit")
-        .undo()
-        .redo()
-        .separator()
-        .cut()
-        .copy()
-        .paste()
-        .select_all()
-        .build()?;
-    MenuBuilder::new(app).item(&edit_menu).build()
-}
-
 fn set_up(app: &mut App) -> Result<(), String> {
     let settings_store = storage::SettingsStore::new(app.handle())?;
     let settings = settings_store.load()?;
@@ -95,6 +77,6 @@ fn set_up(app: &mut App) -> Result<(), String> {
     core::handle::Handle::create_setting_window(app)?;
     core::handle::Handle::register_shortcuts(app, &settings.main_shortcut)?;
     core::handle::Handle::create_tray_icon(app)?;
-    app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+    platform::finish_setup(app);
     Ok(())
 }

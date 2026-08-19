@@ -64,6 +64,7 @@ export type SystemType = "macos" | "windows" | "linux" | "other";
 export interface SystemPermissionStatus {
   readonly systemType: SystemType;
   readonly systemName: string;
+  readonly automaticPasteSupported: boolean;
   readonly accessibilityPermissionGranted: boolean;
   readonly accessibilityPermissionSupported: boolean;
 }

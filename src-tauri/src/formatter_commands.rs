@@ -1,4 +1,4 @@
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::core::formatter_window::{self, TextFormatterInput, TextFormatterState};
 
@@ -32,8 +32,14 @@ pub async fn show_text_formatter(
     input: TextFormatterInput,
 ) -> CommandResult<String> {
     run_formatter_window_task(app_handle, move |main_thread_handle| {
-        crate::cmds::hide_main_panel_now(main_thread_handle)?;
-        formatter_window::create_for_input(main_thread_handle, input)
+        let formatter_state = main_thread_handle.state::<TextFormatterState>();
+        formatter_state.set_main_panel_activation(true);
+        let result = (|| {
+            crate::cmds::hide_main_panel_now(main_thread_handle)?;
+            formatter_window::create_for_input(main_thread_handle, input)
+        })();
+        formatter_state.set_main_panel_activation(false);
+        result
     })
     .await
 }
