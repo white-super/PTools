@@ -26,11 +26,12 @@ interface UsePasteFlowKeyboardOptions {
   readonly closeMenus: () => void;
   readonly focusSearch: () => void;
   readonly filterNavigation: FilterNavigationOptions;
+  readonly formatCard: (card: ClipboardHistoryEntry) => void;
   readonly pasteCard: (card: ClipboardHistoryEntry) => void;
   readonly reportError: (error: unknown) => void;
 }
 
-const MAIN_PANEL_FOCUS_EVENT = "tauri://focus";
+const MAIN_PANEL_FOCUS_EVENT = "ptools://main-panel-focus";
 export const MAX_QUICK_SELECT_CARDS = 5;
 
 export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
@@ -58,6 +59,14 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
     const card = options.cards.value.find((entry) => entry.id === selectedCardId.value);
     if (card) {
       options.pasteCard(card);
+    }
+  }
+
+  function formatSelectedCard() {
+    const card = options.cards.value.find((entry) => entry.id === selectedCardId.value)
+      ?? options.cards.value[0];
+    if (card) {
+      options.formatCard(card);
     }
   }
 
@@ -154,6 +163,12 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
       return;
     }
     if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+      return;
+    }
+    if (event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      options.closeMenus();
+      formatSelectedCard();
       return;
     }
     if (/^[1-5]$/.test(event.key)) {

@@ -22,7 +22,7 @@ import type {
 } from "../types/settings";
 
 const HISTORY_UPDATED_EVENT = "clipboard-history-updated";
-const MAIN_PANEL_FOCUS_EVENT = "tauri://focus";
+const MAIN_PANEL_FOCUS_EVENT = "ptools://main-panel-focus";
 const SETTINGS_UPDATED_EVENT = "app-settings-updated";
 const TAGS_UPDATED_EVENT = "clipboard-tags-updated";
 const HISTORY_PAGE_SIZE = 20;

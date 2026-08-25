@@ -7,7 +7,7 @@ use tauri_nspanel::{cocoa::appkit::NSWindowCollectionBehavior, ManagerExt, Webvi
 pub const VISIBILITY_EVENT: &str = "shortcut-help-visibility-changed";
 const HELP_WINDOW_LABEL: &str = "shortcut-help";
 const HELP_WINDOW_WIDTH: f64 = 320.0;
-const HELP_WINDOW_HEIGHT: f64 = 390.0;
+const HELP_WINDOW_HEIGHT: f64 = 450.0;
 const HELP_WINDOW_LEFT_OFFSET: f64 = 14.0;
 const HELP_WINDOW_BOTTOM_GAP: f64 = 8.0;
 const NS_POP_UP_MENU_WINDOW_LEVEL: i32 = 101;

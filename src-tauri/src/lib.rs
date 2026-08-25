@@ -4,6 +4,7 @@ use tauri::{App, Manager};
 
 mod cmds;
 mod core;
+mod formatter_commands;
 mod help_commands;
 mod settings_commands;
 mod storage;
@@ -13,6 +14,7 @@ mod system_permissions;
 pub fn run() {
     let builder = tauri::Builder::default()
         .manage(cmds::PasteTargetProcessId::default())
+        .manage(core::handle::MainPanelState::default())
         .enable_macos_default_menu(false);
     #[cfg(target_os = "macos")]
     let builder = builder.menu(create_edit_menu);
@@ -34,6 +36,11 @@ pub fn run() {
             cmds::toggle_window,
             cmds::hide_main_panel,
             cmds::paste_into_active_app,
+            formatter_commands::show_text_formatter,
+            formatter_commands::close_text_formatter,
+            formatter_commands::get_text_formatter_input,
+            formatter_commands::get_text_formatter_pinned,
+            formatter_commands::set_text_formatter_pinned,
             help_commands::show_shortcut_help,
             help_commands::hide_shortcut_help,
             settings_commands::get_app_settings,
@@ -82,6 +89,7 @@ fn set_up(app: &mut App) -> Result<(), String> {
     app.manage(history_store);
     app.manage(tag_store);
     app.manage(storage::SettingsState::new(settings.clone()));
+    app.manage(core::formatter_window::TextFormatterState::default());
     core::handle::Handle::create_main_window(app)?;
     core::help_window::create(app)?;
     core::handle::Handle::create_setting_window(app)?;

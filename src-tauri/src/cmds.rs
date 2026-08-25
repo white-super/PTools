@@ -120,8 +120,19 @@ fn position_main_panel(
     Ok(())
 }
 
-fn hide_main_panel_now(app_handle: &AppHandle) -> CmdResult {
+pub(crate) fn hide_main_panel_now(app_handle: &AppHandle) -> CmdResult {
     crate::core::help_window::hide(app_handle)?;
+    let window = app_handle
+        .get_webview_window("main")
+        .ok_or_else(|| "failed to find main window".to_owned())?;
+    if window
+        .is_focused()
+        .map_err(|error| format!("failed to read main panel focus state: {error}"))?
+    {
+        app_handle
+            .state::<crate::core::handle::MainPanelState>()
+            .suppress_next_blur();
+    }
     let panel = app_handle
         .get_webview_panel("main")
         .map_err(|error| format!("failed to find main panel: {error:?}"))?;
@@ -244,10 +255,9 @@ pub fn toggle_window(app_handle: tauri::AppHandle) {
             return;
         };
         if panel.is_visible() {
-            if let Err(error) = crate::core::help_window::hide(&main_thread_handle) {
-                eprintln!("failed to hide shortcut help panel: {error}");
+            if let Err(error) = hide_main_panel_now(&main_thread_handle) {
+                eprintln!("failed to hide main panel: {error}");
             }
-            panel.order_out(None);
             return;
         }
 
@@ -255,8 +265,14 @@ pub fn toggle_window(app_handle: tauri::AppHandle) {
             eprintln!("failed to find main window");
             return;
         };
+        main_thread_handle
+            .state::<crate::core::formatter_window::TextFormatterState>()
+            .set_main_panel_activation(true);
         let Ok(cursor_position) = main_thread_handle.cursor_position() else {
             eprintln!("failed to read cursor position");
+            main_thread_handle
+                .state::<crate::core::formatter_window::TextFormatterState>()
+                .set_main_panel_activation(false);
             return;
         };
         if let Err(error) = remember_frontmost_application(&main_thread_handle) {
@@ -264,10 +280,19 @@ pub fn toggle_window(app_handle: tauri::AppHandle) {
         }
         if let Err(error) = position_main_panel(&window, cursor_position) {
             eprintln!("failed to prepare main panel: {error}");
+            main_thread_handle
+                .state::<crate::core::formatter_window::TextFormatterState>()
+                .set_main_panel_activation(false);
             return;
         }
 
+        if let Err(error) = crate::core::formatter_window::destroy_unpinned(&main_thread_handle) {
+            eprintln!("failed to close unpinned text formatter windows: {error}");
+        }
         panel.show();
+        main_thread_handle
+            .state::<crate::core::formatter_window::TextFormatterState>()
+            .set_main_panel_activation(false);
         println!(
             "[main-panel] show requested; visible={}",
             panel.is_visible()

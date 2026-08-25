@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { onMounted, onUnmounted } from "vue";
 
 const ESCAPE_KEY = "Escape";
-const MAIN_PANEL_BLUR_EVENT = "tauri://blur";
+const MAIN_PANEL_BLUR_EVENT = "ptools://main-panel-blur";
 
 function reportDismissalError(error: unknown) {
   console.error("Failed to hide the main panel", error);
