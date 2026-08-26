@@ -71,6 +71,6 @@ jobs:
           releaseName: PTools v__VERSION__
           releaseBody: Download the DMG that matches your Mac architecture, or the Windows x64 EXE installer.
           releaseDraft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
           retryAttempts: 3
           args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
