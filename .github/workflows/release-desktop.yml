@@ -1,4 +1,4 @@
-name: Build macOS Installers
+name: Build Desktop Installers
 
 on:
   workflow_dispatch:
@@ -20,9 +20,15 @@ jobs:
           - name: macOS Apple Silicon
             runner: macos-14
             target: aarch64-apple-darwin
+            bundles: dmg,app
           - name: macOS Intel
             runner: macos-15-intel
             target: x86_64-apple-darwin
+            bundles: dmg,app
+          - name: Windows x64
+            runner: windows-2022
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
 
     steps:
       - name: Check out repository
@@ -63,8 +69,8 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: PTools v__VERSION__
-          releaseBody: Download the DMG that matches your Mac architecture.
+          releaseBody: Download the DMG that matches your Mac architecture, or the Windows x64 EXE installer.
           releaseDraft: false
           prerelease: false
           retryAttempts: 3
-          args: --target ${{ matrix.target }} --bundles dmg,app
+          args: --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
