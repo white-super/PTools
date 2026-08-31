@@ -32,6 +32,7 @@ html.theme-soft-glow {
   --app-border: rgba(76, 81, 88, 0.18);
   --app-surface: rgba(244, 245, 246, 0.68);
   --app-surface-elevated: rgba(251, 251, 252, 0.78);
+  --app-menu-background: #fbfbfc;
   --app-hover: rgba(255, 255, 255, 0.34);
   --app-active: rgba(238, 240, 242, 0.72);
   --app-primary: #557fa9;
@@ -72,6 +73,7 @@ html.theme-classic {
   --app-border: #e7e9ed;
   --app-surface: #f8f8fa;
   --app-surface-elevated: #ffffff;
+  --app-menu-background: #ffffff;
   --app-hover: #eaedf1;
   --app-active: #e3e7ec;
   --app-primary: #668fb9;
@@ -113,6 +115,7 @@ html.theme-dark {
   --app-border: #32363c;
   --app-surface: #222529;
   --app-surface-elevated: #292c31;
+  --app-menu-background: #292c31;
   --app-hover: #2c3035;
   --app-active: #343940;
   --app-primary: #72a7dc;

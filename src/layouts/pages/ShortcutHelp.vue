@@ -50,7 +50,7 @@ onUnmounted(() => {
 
 <template>
   <main class="shortcut-help-page">
-    <ShortcutHelpContent :shortcut-settings="settings" @close="closeHelp" />
+    <ShortcutHelpContent v-if="settings" :shortcut-settings="settings" @close="closeHelp" />
   </main>
 </template>
 

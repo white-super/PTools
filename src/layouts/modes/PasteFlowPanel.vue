@@ -236,7 +236,7 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = "";
 </script>
 
 <template>
-  <div class="paste-flow-panel" :class="panelThemeClass" @click="closeMenus">
+  <div class="paste-flow-panel" :class="panelThemeClass" @click="closeMenus" @contextmenu.prevent>
     <div class="panel-toolbar">
       <ClipboardFilterBar
         ref="filterBar"

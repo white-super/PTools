@@ -3454,7 +3454,7 @@ dependencies = [
 
 [[package]]
 name = "ptools"
-version = "1.2.0"
+version = "1.3.0"
 dependencies = [
  "anyhow",
  "cocoa 0.25.0",
@@ -3474,6 +3474,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-process",
  "tauri-plugin-updater",
+ "windows",
 ]
 
 [[package]]

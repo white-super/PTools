@@ -3,20 +3,12 @@ import { computed } from "vue";
 import type { PasteFlowShortcutSettings } from "../types/settings";
 
 interface Props {
-  readonly shortcutSettings?: PasteFlowShortcutSettings;
+  readonly shortcutSettings: PasteFlowShortcutSettings;
 }
-
-const DEFAULT_SHORTCUTS: PasteFlowShortcutSettings = {
-  mainShortcut: "Ctrl+V",
-  previousFilterShortcut: "Ctrl+Q",
-  nextFilterShortcut: "Ctrl+E",
-  previousCardShortcut: "Ctrl+A",
-  nextCardShortcut: "Ctrl+D",
-};
 
 const props = defineProps<Props>();
 const emit = defineEmits<{ close: [] }>();
-const shortcutSettings = computed(() => props.shortcutSettings ?? DEFAULT_SHORTCUTS);
+const shortcutSettings = computed(() => props.shortcutSettings);
 const helpSections = computed(() => [
   {
     title: "面板操作",

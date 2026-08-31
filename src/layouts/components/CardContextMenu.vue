@@ -90,7 +90,7 @@ const opensSubmenuLeft = computed(
   padding: 4px;
   border: 1px solid var(--app-border);
   border-radius: 8px;
-  background: var(--app-surface-elevated);
+  background: var(--app-menu-background);
   box-shadow: var(--app-shadow);
 }
 
