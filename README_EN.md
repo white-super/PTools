@@ -4,7 +4,7 @@
 
 <h1 align="center">PTools</h1>
 
-<p align="center">A local-first clipboard history app for macOS</p>
+<p align="center">A local-first cross-platform clipboard history app</p>
 
 <p align="center">
   <a href="README.md">简体中文</a> | <a href="README_EN.md">English</a>
@@ -28,13 +28,14 @@ PTools is a utility built around copy and paste. It keeps copied text, images, a
 
 ## Download and Install
 
-1. Download the matching `.dmg` from [Releases](https://github.com/white-super/PTools/releases):
+1. Download the matching installer from [Releases](https://github.com/white-super/PTools/releases):
    - `aarch64` for Apple Silicon Macs.
    - `x86_64` for Intel Macs.
-2. Open the `.dmg` and drag **PTools** into Applications.
-3. Press the default shortcut `Ctrl + V` to open the clipboard panel.
+   - Windows users should download the `x64-setup.exe` installer.
+2. On macOS, open the `.dmg` and drag **PTools** into Applications. On Windows, run the `.exe` installer and follow the prompts.
+3. Press `Ctrl + V` on macOS or `Alt + V` on Windows to open the clipboard panel.
 
-> If macOS blocks the first launch, allow the app in **System Settings → Privacy & Security**.
+> If macOS blocks the first launch, allow the app in **System Settings → Privacy & Security**. Windows may show a SmartScreen prompt for an unsigned installer; choose **More info → Run anyway** if you trust the download.
 
 ## Highlights
 
@@ -73,7 +74,7 @@ PTools is a utility built around copy and paste. It keeps copied text, images, a
 
 PTools does not upload clipboard history. Clipboard items and settings stay on your device. You can shorten retention, disable a content type, or clear all history at any time. See the [Privacy Policy](PRIVACY.md) for details.
 
-To use global shortcuts and auto-paste, allow **PTools** in **System Settings → Privacy & Security → Accessibility**. This permission is only used to handle shortcuts and send paste actions after you explicitly choose an item.
+On macOS, allow **PTools** in **System Settings → Privacy & Security → Accessibility** to use global shortcuts and auto-paste. Windows does not require macOS Accessibility permission. This permission is only used to handle shortcuts and send paste actions after you explicitly choose an item.
 
 ## Feedback and Contributing
 

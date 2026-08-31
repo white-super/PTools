@@ -1,6 +1,6 @@
 [package]
 name = "ptools"
-version = "1.3.0-beta"
+version = "1.3.0"
 description = "A local-first clipboard history app for macOS"
 license = "Apache-2.0"
 edition = "2021"

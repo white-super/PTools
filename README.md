@@ -4,7 +4,7 @@
 
 <h1 align="center">PTools</h1>
 
-<p align="center">macOS 剪贴板工具</p>
+<p align="center">跨平台剪贴板工具</p>
 
 <p align="center">
   <a href="README.md">简体中文</a> | <a href="README_EN.md">English</a>
@@ -34,15 +34,16 @@ PTools 是一个以粘贴板为载体的工具集，目标是将日常经常使�
 
 ## 下载与安装
 
-1. 前往 [版本发布页](https://github.com/white-super/PTools/releases) 下载与你的 Mac 芯片匹配的 `.dmg`：
+1. 前往 [版本发布页](https://github.com/white-super/PTools/releases) 下载对应系统的安装包：
    - `aarch64`：Apple Silicon，适用于 M 系列芯片。
    - `x86_64`：Intel Mac。
-2. 打开 `.dmg`，将 **PTools** 拖入“应用程序”文件夹。
-3. 首次启动后，按下默认快捷键 `Ctrl + V` 呼出剪贴板面板。
+   - Windows 用户下载 `x64-setup.exe` 安装包。
+2. macOS：打开 `.dmg`，将 **PTools** 拖入“应用程序”文件夹。Windows：运行 `.exe` 安装程序并按提示完成安装。
+3. 首次启动后，macOS 默认按 `Ctrl + V`，Windows 默认按 `Alt + V` 呼出剪贴板面板。
 
 ### macOS 首次安装信任与权限
 
-GitHub 下载的版本目前使用临时签名，macOS 可能提示无法验证开发者，或者辅助功能开关打开后仍无法自动粘贴。将应用拖入“应用程序”后，在“终端”中执行以下命令（不需要安装 Tauri、Node.js 或其他开发工具）：
+GitHub 下载的 macOS 版本目前使用临时签名，可能提示无法验证开发者，或者辅助功能开关打开后仍无法自动粘贴。将应用拖入“应用程序”后，在“终端”中执行以下命令（不需要安装 Tauri、Node.js 或其他开发工具）：
 
 ```bash
 osascript -e 'quit app "PTools"' 2>/dev/null || true
@@ -95,7 +96,7 @@ open /Applications/PTools.app
 
 PTools 不上传剪贴板历史。文本、图片、文件路径和设置均保存在你的本机；你可以随时缩短保留时间、关闭某类记录或清空全部历史。详见 [隐私说明](PRIVACY.md)。
 
-若要使用全局快捷键和自动粘贴，请在 macOS 的“系统设置 → 隐私与安全性 → 辅助功能”中允许 **PTools**。该权限仅用于响应快捷键及在你明确选择记录后发送粘贴操作。
+若要在 macOS 上使用全局快捷键和自动粘贴，请在“系统设置 → 隐私与安全性 → 辅助功能”中允许 **PTools**。Windows 不需要 macOS 辅助功能权限。该权限仅用于响应快捷键及在你明确选择记录后发送粘贴操作。
 
 ## 问题反馈
 
