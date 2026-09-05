@@ -8,22 +8,14 @@ import PasteCard from "../components/PasteCard/index.vue";
 import { DEFAULT_APP_THEME } from "../constants/appThemes";
 import { useClipboardHistory } from "../composables/useClipboardHistory";
 import { useClipboardHistoryQuery } from "../composables/useClipboardHistoryQuery";
+import { useCardContextMenu } from "../composables/useCardContextMenu";
 import { usePanelDismissal } from "../composables/usePanelDismissal";
 import { usePanelEmptyState } from "../composables/usePanelEmptyState";
 import { MAX_QUICK_SELECT_CARDS, usePasteFlowKeyboard } from "../composables/usePasteFlowKeyboard";
 import { useShortcutHelpPanel } from "../composables/useShortcutHelpPanel";
 import { useTextFormatterLauncher } from "../composables/useTextFormatterLauncher";
+import type { TextFormat } from "../features/text-formatter/types";
 import type { ClipboardFilter, ClipboardHistoryEntry, ClipboardTagInput } from "../types/settings";
-interface CardContextMenuState {
-  readonly cardId: number;
-  readonly x: number;
-  readonly y: number;
-  readonly assignedTagIds: readonly number[];
-}
-const CONTEXT_MENU_WIDTH = 152;
-const CONTEXT_MENU_MAX_HEIGHT = 264;
-const CONTEXT_MENU_BASE_HEIGHT = 42;
-const CONTEXT_MENU_MARGIN = 8;
 const FORMAT_FILTERS: readonly ClipboardFilter[] = ["text", "image", "file"];
 
 const {
@@ -41,9 +33,8 @@ const {
   tags,
   updateTag,
 } = useClipboardHistory();
-const { openTextFormatter } = useTextFormatterLauncher();
+const { openTextFormatter, openTextFormatterWithFormat } = useTextFormatterLauncher();
 const isPasting = shallowRef(false);
-const contextMenu = shallowRef<CardContextMenuState>();
 const cardContainer = useTemplateRef<HTMLDivElement>("cardContainer");
 const filterBar = useTemplateRef<InstanceType<typeof ClipboardFilterBar>>("filterBar");
 const searchInput = useTemplateRef<InstanceType<typeof ClipboardSearchInput>>("searchInput");
@@ -75,38 +66,20 @@ const availableFilters = computed<readonly ClipboardFilter[]>(() => [
 const { description: emptyStateDescription, title: emptyStateTitle } = usePanelEmptyState({
   activeFilter, isLoading, searchQuery, tags,
 });
+const { closeCardContextMenu, contextMenu, openCardContextMenu } = useCardContextMenu({ tags });
 function reportPanelError(action: string, error: unknown) {
   console.error(`Failed to ${action}`, error);
   const message = error instanceof Error ? error.message : String(error);
   ElMessage.error(message);
-}
-function closeCardContextMenu() {
-  contextMenu.value = undefined;
 }
 function closeMenus() {
   closeCardContextMenu();
   filterBar.value?.closeMenus();
 }
 
-function openCardContextMenu(card: ClipboardHistoryEntry, event: MouseEvent) {
+function handleCardContextMenu(card: ClipboardHistoryEntry, event: MouseEvent) {
   selectedCardId.value = card.id;
-  contextMenu.value = {
-    cardId: card.id,
-    x: Math.min(
-      event.clientX,
-      Math.max(CONTEXT_MENU_MARGIN, window.innerWidth - CONTEXT_MENU_WIDTH - CONTEXT_MENU_MARGIN),
-    ),
-    y: Math.min(
-      event.clientY,
-      Math.max(
-        CONTEXT_MENU_MARGIN,
-        window.innerHeight -
-          (tags.value.length > 0 ? CONTEXT_MENU_MAX_HEIGHT : CONTEXT_MENU_BASE_HEIGHT) -
-          CONTEXT_MENU_MARGIN,
-      ),
-    ),
-    assignedTagIds: card.tagIds,
-  };
+  openCardContextMenu(card, event);
 }
 
 function toggleTagId(tagIds: readonly number[], tagId: number) {
@@ -142,6 +115,14 @@ async function handleDeleteCard() {
     }
   } catch (error) {
     reportPanelError("delete clipboard history", error);
+  }
+}
+
+function handleUseCardTool(format: TextFormat) {
+  const menu = contextMenu.value;
+  closeCardContextMenu();
+  if (menu) {
+    openTextFormatterWithFormat(menu.card, format);
   }
 }
 
@@ -276,7 +257,7 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = "";
         :quick-key="index < MAX_QUICK_SELECT_CARDS ? index + 1 : undefined"
         @select="selectCard(card.id)"
         @paste="handlePaste(card)"
-        @context-menu="openCardContextMenu(card, $event)"
+        @context-menu="handleCardContextMenu(card, $event)"
       />
     </div>
     <div v-else class="empty-state">
@@ -289,7 +270,9 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = "";
       :y="contextMenu.y"
       :tags="tags"
       :assigned-tag-ids="contextMenu.assignedTagIds"
+      :tools="contextMenu.tools"
       @toggle-tag="handleToggleCardTag"
+      @use-tool="handleUseCardTool"
       @delete="handleDeleteCard"
     />
   </div>

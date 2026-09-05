@@ -25,6 +25,7 @@ const SUPPORTED_ACTIONS: readonly TextTransformAction[] = [
 export const jsonFormatter: TextFormatter = {
   format: "json",
   title: "JSON 格式化",
+  editorLanguage: "json",
   supportedActions: SUPPORTED_ACTIONS,
   matches: isJsonText,
   prepare: formatJsonText,
@@ -45,6 +46,8 @@ function transformJson(action: TextTransformAction, content: string): TextTransf
       return copyResult(jsonToXml(parseJsonText(content)), "已转换为 XML 并复制");
     case "to-typescript-copy":
       return copyResult(jsonToTypeScript(parseJsonText(content)), "已转换为 TypeScript 并复制");
+    default:
+      throw new Error("JSON 不支持此操作");
   }
 }
 

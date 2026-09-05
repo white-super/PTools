@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="#screenshots">Screenshots</a> · <a href="#download-and-install">Download</a> · <a href="#highlights">Features</a> · <a href="#json-formatter">JSON Formatter</a> · <a href="#how-to-use">How to Use</a> · <a href="#privacy-and-permissions">Privacy</a> · <a href="#license">License</a>
+  <a href="#screenshots">Screenshots</a> · <a href="#download-and-install">Download</a> · <a href="#highlights">Features</a> · <a href="#formatting-tools">Formatting Tools</a> · <a href="#todo">TODO</a> · <a href="#how-to-use">How to Use</a> · <a href="#privacy-and-permissions">Privacy</a> · <a href="#license">License</a>
 </p>
 
 PTools is a utility built around copy and paste. It keeps copied text, images, and files on your Mac, so your clipboard history remains local and private.
@@ -45,14 +45,27 @@ PTools is a utility built around copy and paste. It keeps copied text, images, a
 - **Restore and paste** with double-click, Enter, or number keys.
 - **Flexible retention** controls for content types, duration, and record limit.
 - **Software updates** from Settings, with a GitHub download fallback.
-- **JSON formatting** for JSON/JSONC clipboard content, including formatting, minifying, comment removal, and conversion to XML or TypeScript.
+- **Text formatting tools** for JSON/JSONC, XML, HTML, URL, Base64, and date content, with a dedicated formatter or conversion workspace for each type.
 
-## JSON Formatter
+## Formatting Tools
 
-1. Select a JSON or JSONC text entry in the clipboard panel.
-2. Press `F` to open an independent JSON formatting window. Escaped JSON text, such as `{\"name\":\"value\"}`, is also recognized.
-3. Use the toolbar to format, fold or unfold, remove comments, copy a minified or escaped version, or copy an XML/TypeScript conversion.
-4. Press `Command + D` or `Alt + D` to pin or unpin the window. Pinned windows stay visible when unfocused, and multiple formatter windows can be open at the same time.
+1. Select a text entry in the clipboard panel.
+2. Press `F` to open an independent formatting workspace. Escaped JSON text is also recognized.
+3. Right-click a text card and open “Use Tool” to view and select all text tools.
+4. JSON supports formatting, folding, comment removal, minified or escaped copies, and XML/TypeScript conversion. URL, Base64, and date entries expose their corresponding conversion actions.
+5. All formatting tools support shortcuts: use `Ctrl + R` for regular formatting; JSON comment removal, minifying, escaping, and conversions use `Ctrl + Q/W/A/S/T`; URL, Base64, and date conversions use `Ctrl + E/D`.
+6. The toolbar includes an auto-wrap toggle enabled by default. When text is selected, formatting and encoding/decoding apply only to the selection; otherwise they apply to the full content.
+7. Press `Command + D` or `Alt + D` to pin or unpin the window. Pinned windows stay visible when unfocused, and multiple formatter windows can be open at the same time.
+
+## TODO
+
+- [ ] **Password manager**: Generate random passwords and store them encrypted in the local database.
+- [x] **Extended formatting**: Support XML, HTML, URL encode/decode, date formatting and conversion, and Base64 encoding/decoding.
+- [ ] **Sequential paste**: When enabled, arrange multiple clipboard items in order and paste them one by one with a shortcut.
+- [ ] **cURL request tool**: Parse cURL text in a dedicated request workspace and inspect responses.
+- [ ] **Image crop tool**: Crop, resize, copy, or save clipboard images.
+
+These features are planned for version `1.4.0`; the exact interactions and shortcuts may change during implementation.
 
 ## How to Use
 

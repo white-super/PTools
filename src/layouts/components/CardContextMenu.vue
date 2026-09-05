@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import type { TextFormat, TextFormatterOption } from "../features/text-formatter/types";
 import type { ClipboardTag } from "../types/settings";
 
 const CONTEXT_MENU_WIDTH_PX = 152;
@@ -10,11 +11,13 @@ interface Props {
   y: number;
   tags: readonly ClipboardTag[];
   assignedTagIds: readonly number[];
+  tools: readonly TextFormatterOption[];
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
   toggleTag: [tagId: number];
+  useTool: [format: TextFormat];
   delete: [];
 }>();
 
@@ -30,6 +33,39 @@ const opensSubmenuLeft = computed(
     role="menu"
     @click.stop
   >
+    <div
+      class="context-menu-submenu-container"
+      :class="{ 'context-menu-submenu-container-left': opensSubmenuLeft }"
+    >
+      <button
+        type="button"
+        class="context-menu-item context-menu-submenu-trigger"
+        role="menuitem"
+        aria-haspopup="menu"
+        :disabled="props.tools.length === 0"
+      >
+        <span>使用工具</span>
+        <span class="context-menu-submenu-arrow">{{ opensSubmenuLeft ? "‹" : "›" }}</span>
+      </button>
+      <div
+        v-if="props.tools.length > 0"
+        class="context-menu context-menu-submenu"
+        :class="{ 'context-menu-submenu-left': opensSubmenuLeft }"
+        role="menu"
+        aria-label="选择工具"
+      >
+        <button
+          v-for="tool in props.tools"
+          :key="tool.format"
+          type="button"
+          class="context-menu-item"
+          role="menuitem"
+          @click="emit('useTool', tool.format)"
+        >
+          <span class="tool-name">{{ tool.title }}</span>
+        </button>
+      </div>
+    </div>
     <div
       class="context-menu-submenu-container"
       :class="{ 'context-menu-submenu-container-left': opensSubmenuLeft }"
@@ -107,15 +143,30 @@ const opensSubmenuLeft = computed(
   font: inherit;
   font-size: 12px;
   text-align: left;
-  cursor: default;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
 }
 
 .context-menu-item:hover:not(:disabled) {
-  background: var(--app-hover);
+  color: var(--app-heading);
+  background: var(--app-active);
+  transform: translateX(2px);
+}
+
+.context-menu-item:active:not(:disabled) {
+  background: var(--app-primary-ring);
+  transform: translateX(2px) scale(0.98);
+}
+
+.context-menu-item:focus-visible {
+  outline: 2px solid var(--app-primary-ring);
+  outline-offset: -2px;
 }
 
 .context-menu-item:disabled {
   color: var(--app-muted);
+  cursor: default;
+  opacity: 0.65;
 }
 
 .context-menu-item-selected {
@@ -149,6 +200,7 @@ const opensSubmenuLeft = computed(
   color: var(--app-muted);
   font-size: 16px;
   line-height: 12px;
+  transition: color 0.12s ease, transform 0.12s ease;
 }
 
 .context-menu-submenu {
@@ -160,11 +212,32 @@ const opensSubmenuLeft = computed(
   visibility: hidden;
   opacity: 0;
   pointer-events: none;
+  transform: translateX(-4px);
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
 }
 
 .context-menu-submenu-left {
   right: calc(100% + var(--context-menu-edge-offset) + var(--context-menu-submenu-gap));
   left: auto;
+  transform: translateX(4px);
+}
+
+.context-menu-submenu-container:hover > .context-menu-submenu-trigger,
+.context-menu-submenu-container:focus-within > .context-menu-submenu-trigger {
+  color: var(--app-heading);
+  background: var(--app-active);
+  transform: translateX(2px);
+}
+
+.context-menu-submenu-container:hover > .context-menu-submenu-trigger .context-menu-submenu-arrow,
+.context-menu-submenu-container:focus-within > .context-menu-submenu-trigger .context-menu-submenu-arrow {
+  color: var(--app-primary);
+  transform: translateX(2px);
+}
+
+.context-menu-submenu-container-left:hover > .context-menu-submenu-trigger .context-menu-submenu-arrow,
+.context-menu-submenu-container-left:focus-within > .context-menu-submenu-trigger .context-menu-submenu-arrow {
+  transform: translateX(-2px);
 }
 
 .context-menu-submenu-container:hover > .context-menu-submenu,
@@ -172,6 +245,7 @@ const opensSubmenuLeft = computed(
   visibility: visible;
   opacity: 1;
   pointer-events: auto;
+  transform: translateX(0);
 }
 
 .context-menu-divider {
@@ -187,6 +261,7 @@ const opensSubmenuLeft = computed(
   border-radius: 999px;
 }
 
+.tool-name,
 .tag-name {
   min-width: 0;
   overflow: hidden;
@@ -205,7 +280,8 @@ const opensSubmenuLeft = computed(
   color: var(--app-danger);
 }
 
-.context-menu-item-danger:hover {
+.context-menu-item-danger:hover:not(:disabled) {
+  color: var(--app-danger);
   background: var(--app-danger-hover);
 }
 </style>

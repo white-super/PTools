@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from "vue";
+import { formatterShortcutLabel } from "../formatterShortcuts";
 import type { FormatterToolbarAction, TextTransformAction } from "../types";
 
 interface ToolbarOption {
@@ -8,6 +10,9 @@ interface ToolbarOption {
 
 interface Props {
   supportedActions: readonly TextTransformAction[];
+  supportsFolding: boolean;
+  statusMessage: string;
+  lineWrapping: boolean;
 }
 
 const TOOLBAR_OPTIONS: readonly ToolbarOption[] = [
@@ -19,58 +24,191 @@ const TOOLBAR_OPTIONS: readonly ToolbarOption[] = [
   { action: "escape-copy", label: "压缩转义并复制" },
   { action: "to-xml-copy", label: "JSON 转 XML 并复制" },
   { action: "to-typescript-copy", label: "JSON 转 TypeScript 并复制" },
+  { action: "url-encode", label: "URL 编码" },
+  { action: "url-decode", label: "URL 解码" },
+  { action: "base64-encode", label: "Base64 编码" },
+  { action: "base64-decode", label: "Base64 解码" },
+  { action: "date-to-timestamp", label: "转为时间戳" },
+  { action: "timestamp-to-date", label: "转为 ISO 日期" },
 ];
 
 const props = defineProps<Props>();
-const emit = defineEmits<{ action: [action: FormatterToolbarAction] }>();
+const emit = defineEmits<{
+  action: [action: FormatterToolbarAction];
+  toggleLineWrapping: [];
+}>();
 
-function isDisabled(action: FormatterToolbarAction) {
-  if (action === "fold-all" || action === "unfold-all") {
-    return false;
-  }
-  return !props.supportedActions.includes(action);
+const visibleOptions = computed(() => TOOLBAR_OPTIONS
+  .filter((option) =>
+    (props.supportsFolding && (option.action === "fold-all" || option.action === "unfold-all"))
+    || isTextTransformAction(option.action) && props.supportedActions.includes(option.action))
+  .map((option) => ({
+    ...option,
+    shortcutLabel: isTextTransformAction(option.action)
+      ? formatterShortcutLabel(option.action)
+      : undefined,
+  })));
+
+function isTextTransformAction(action: FormatterToolbarAction): action is TextTransformAction {
+  return action !== "fold-all" && action !== "unfold-all";
 }
 </script>
 
 <template>
-  <footer class="formatter-toolbar">
+  <div class="formatter-toolbar" role="toolbar" aria-label="格式化工具">
     <button
-      v-for="option in TOOLBAR_OPTIONS"
+      v-for="option in visibleOptions"
       :key="option.action"
       type="button"
       class="toolbar-action"
-      :disabled="isDisabled(option.action)"
       @click="emit('action', option.action)"
     >
-      {{ option.label }}
+      <span>{{ option.label }}</span>
+      <kbd v-if="option.shortcutLabel" class="toolbar-shortcut">
+        {{ option.shortcutLabel }}
+      </kbd>
     </button>
-  </footer>
+    <label class="toolbar-switch" title="切换自动换行">
+      <input
+        class="toolbar-switch-input"
+        type="checkbox"
+        :checked="props.lineWrapping"
+        aria-label="自动换行"
+        @change="emit('toggleLineWrapping')"
+      />
+      <span class="toolbar-switch-track" aria-hidden="true">
+        <span class="toolbar-switch-thumb"></span>
+      </span>
+      <span class="toolbar-switch-label">自动换行</span>
+    </label>
+    <span v-if="props.statusMessage" class="toolbar-status" role="status" aria-live="polite">
+      <span class="toolbar-status-mark" aria-hidden="true">✓</span>
+      {{ props.statusMessage }}
+    </span>
+  </div>
 </template>
 
 <style scoped>
 .formatter-toolbar {
   display: flex;
   min-width: 0;
-  overflow-x: auto;
+  overflow: visible;
   align-items: center;
+  align-content: center;
+  flex-wrap: wrap;
   gap: 4px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--app-border);
+  row-gap: 2px;
+  min-height: 34px;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--app-border);
   background: var(--app-surface);
   scrollbar-width: thin;
 }
 
 .toolbar-action {
+  box-sizing: border-box;
+  display: inline-flex;
   flex: 0 0 auto;
+  min-height: 26px;
+  align-items: center;
+  gap: 7px;
   border: 0;
   border-radius: 8px;
-  padding: 8px 10px;
+  padding: 4px 7px;
   color: var(--app-secondary);
   background: transparent;
   font: inherit;
   font-size: 13px;
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.toolbar-switch {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 26px;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  color: var(--app-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.toolbar-switch:hover {
+  color: var(--app-heading);
+}
+
+.toolbar-switch-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toolbar-switch-track {
+  display: inline-flex;
+  width: 28px;
+  height: 16px;
+  align-items: center;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--app-border);
+  transition: background-color 0.15s ease;
+}
+
+.toolbar-switch-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--app-surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 20%);
+  transform: translateX(0);
+  transition: transform 0.15s ease;
+}
+
+.toolbar-switch-input:checked + .toolbar-switch-track {
+  background: var(--app-primary);
+}
+
+.toolbar-switch-input:checked + .toolbar-switch-track .toolbar-switch-thumb {
+  transform: translateX(12px);
+}
+
+.toolbar-switch-input:focus-visible + .toolbar-switch-track {
+  outline: 2px solid var(--app-primary-ring);
+  outline-offset: 2px;
+}
+
+.toolbar-shortcut {
+  border: 1px solid var(--app-border);
+  border-radius: 5px;
+  padding: 1px 5px;
+  color: var(--app-muted);
+  background: var(--app-active);
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.toolbar-status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 0 4px 0 12px;
+  color: var(--app-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.toolbar-status-mark {
+  color: var(--app-primary);
+  font-size: 12px;
 }
 
 .toolbar-action:hover:not(:disabled) {

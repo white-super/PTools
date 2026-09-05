@@ -4,8 +4,14 @@ import { tags } from "@lezer/highlight";
 import { basicSetup, EditorView } from "codemirror";
 import { onMounted, onUnmounted, shallowRef, useTemplateRef, watch } from "vue";
 import { json } from "@codemirror/lang-json";
+import type { TextFormat } from "../types";
 
 const content = defineModel<string>({ required: true });
+const props = defineProps<{
+  format?: TextFormat;
+  editorLanguage?: "json" | "plain";
+  lineWrapping: boolean;
+}>();
 const editorHost = useTemplateRef<HTMLDivElement>("editorHost");
 const editorView = shallowRef<EditorView>();
 
@@ -56,7 +62,8 @@ function createEditor(parent: HTMLElement) {
     doc: content.value,
     extensions: [
       basicSetup,
-      json(),
+      ...(props.lineWrapping ? [EditorView.lineWrapping] : []),
+      ...(props.editorLanguage === "json" ? [json()] : []),
       editorTheme,
       syntaxHighlighting(highlightTheme),
       EditorView.updateListener.of((update) => {
@@ -76,6 +83,24 @@ function replaceEditorContent(value: string) {
   view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
 }
 
+function recreateEditor() {
+  const view = editorView.value;
+  const parent = editorHost.value;
+  if (!view || !parent) {
+    return;
+  }
+  const selection = view.state.selection.main;
+  const documentLength = content.value.length;
+  view.destroy();
+  editorView.value = createEditor(parent);
+  editorView.value.dispatch({
+    selection: {
+      anchor: Math.min(selection.anchor, documentLength),
+      head: Math.min(selection.head, documentLength),
+    },
+  });
+}
+
 function foldAllContent() {
   if (editorView.value) foldAll(editorView.value);
 }
@@ -84,7 +109,25 @@ function unfoldAllContent() {
   if (editorView.value) unfoldAll(editorView.value);
 }
 
+function getSelectedText() {
+  const view = editorView.value;
+  if (!view) return undefined;
+  const selection = view.state.selection.main;
+  if (selection.empty) return undefined;
+  return view.state.sliceDoc(selection.from, selection.to);
+}
+
+function replaceSelectedText(value: string) {
+  const view = editorView.value;
+  if (!view || view.state.selection.main.empty) return false;
+  const selection = view.state.selection.main;
+  view.dispatch({ changes: { from: selection.from, to: selection.to, insert: value } });
+  return true;
+}
+
 watch(content, replaceEditorContent);
+watch(() => props.editorLanguage, recreateEditor);
+watch(() => props.lineWrapping, recreateEditor);
 
 onMounted(() => {
   if (editorHost.value) {
@@ -97,13 +140,18 @@ onUnmounted(() => {
   editorView.value = undefined;
 });
 
-defineExpose({ foldAll: foldAllContent, unfoldAll: unfoldAllContent });
+defineExpose({
+  foldAll: foldAllContent,
+  getSelectedText,
+  replaceSelectedText,
+  unfoldAll: unfoldAllContent,
+});
 </script>
 
 <template>
   <div class="code-editor-shell">
     <div ref="editorHost" class="code-editor"></div>
-    <span v-if="content.length === 0" class="code-editor-placeholder">粘贴或输入 JSON 内容</span>
+    <span v-if="content.length === 0" class="code-editor-placeholder">粘贴或输入内容</span>
   </div>
 </template>
 

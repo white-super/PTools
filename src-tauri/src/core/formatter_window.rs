@@ -27,6 +27,11 @@ const WINDOWS_MOVE_GRACE_PERIOD: Duration = Duration::from_millis(500);
 #[serde(rename_all = "lowercase")]
 pub enum TextFormat {
     Json,
+    Xml,
+    Html,
+    Url,
+    Base64,
+    Date,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

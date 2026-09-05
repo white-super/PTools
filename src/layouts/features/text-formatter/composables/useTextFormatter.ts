@@ -2,17 +2,24 @@ import { invoke } from "@tauri-apps/api/core";
 import { ElMessage } from "element-plus";
 import { computed, onMounted, onUnmounted, shallowRef } from "vue";
 import { writeText } from "tauri-plugin-clipboard-api";
+import { formatterActionFromKeyboard } from "../formatterShortcuts";
 import { getTextFormatter } from "../formatters/registry";
 import type { TextFormatterInput, TextTransformAction } from "../types";
 
 interface UseTextFormatterOptions {
   readonly windowId: string;
+  readonly getSelectedText?: () => string | undefined;
+  readonly replaceSelectedText?: (value: string) => boolean;
 }
+
+const STATUS_VISIBLE_DURATION_MS = 1800;
 
 export function useTextFormatter(options: UseTextFormatterOptions) {
   const input = shallowRef<TextFormatterInput>();
   const content = shallowRef("");
   const isPinned = shallowRef(false);
+  const statusMessage = shallowRef("");
+  let statusTimer: ReturnType<typeof setTimeout> | undefined;
 
   const formatter = computed(() => input.value
     ? getTextFormatter(input.value.format)
@@ -47,16 +54,35 @@ export function useTextFormatter(options: UseTextFormatterOptions) {
       return;
     }
     try {
-      const result = activeFormatter.transform(action, content.value);
+      const selectedText = options.getSelectedText?.();
+      const source = selectedText ?? content.value;
+      const result = activeFormatter.transform(action, source);
       if (result.effect === "replace") {
+        if (selectedText !== undefined && options.replaceSelectedText?.(result.output)) {
+          showStatus(result.message);
+          return;
+        }
         content.value = result.output;
       } else {
         await writeText(result.output);
       }
-      ElMessage.success(result.message);
+      showStatus(result.message);
     } catch (error) {
+      clearStatus();
       reportFormatterError(error);
     }
+  }
+
+  function showStatus(message: string) {
+    clearTimeout(statusTimer);
+    statusMessage.value = message;
+    statusTimer = setTimeout(clearStatus, STATUS_VISIBLE_DURATION_MS);
+  }
+
+  function clearStatus() {
+    clearTimeout(statusTimer);
+    statusTimer = undefined;
+    statusMessage.value = "";
   }
 
   function close() {
@@ -64,17 +90,22 @@ export function useTextFormatter(options: UseTextFormatterOptions) {
     void invoke<void>("close_text_formatter", { windowId: options.windowId }).catch(reportFormatterError);
   }
 
-  function handleEscape(event: KeyboardEvent) {
-    if (event.key !== "Escape") {
-      if (!isPinShortcut(event)) {
-        return;
-      }
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
       event.preventDefault();
-      void togglePinned();
+      close();
       return;
     }
-    event.preventDefault();
-    close();
+    const transformAction = formatterActionFromKeyboard(event, input.value?.format);
+    if (transformAction) {
+      event.preventDefault();
+      void applyTransform(transformAction);
+      return;
+    }
+    if (isPinShortcut(event)) {
+      event.preventDefault();
+      void togglePinned();
+    }
   }
 
   async function initialize() {
@@ -89,15 +120,30 @@ export function useTextFormatter(options: UseTextFormatterOptions) {
   }
 
   onMounted(() => {
-    window.addEventListener("keydown", handleEscape, true);
+    window.addEventListener("keydown", handleKeydown, true);
     void initialize().catch(reportFormatterError);
   });
 
   onUnmounted(() => {
-    window.removeEventListener("keydown", handleEscape, true);
+    window.removeEventListener("keydown", handleKeydown, true);
+    clearTimeout(statusTimer);
   });
 
-  return { applyTransform, close, content, isPinned, supportedActions, title, togglePinned };
+  const format = computed(() => input.value?.format);
+  const editorLanguage = computed(() => formatter.value?.editorLanguage ?? "plain");
+
+  return {
+    applyTransform,
+    close,
+    content,
+    editorLanguage,
+    format,
+    isPinned,
+    supportedActions,
+    statusMessage,
+    title,
+    togglePinned,
+  };
 }
 
 function isPinShortcut(event: KeyboardEvent) {

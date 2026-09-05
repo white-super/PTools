@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useTemplateRef } from "vue";
+import { shallowRef, useTemplateRef } from "vue";
 import FormatterToolbar from "./components/FormatterToolbar.vue";
 import TextCodeEditor from "./components/TextCodeEditor.vue";
 import { useTextFormatter } from "./composables/useTextFormatter";
@@ -11,8 +11,22 @@ interface Props {
 
 const props = defineProps<Props>();
 const editor = useTemplateRef<InstanceType<typeof TextCodeEditor>>("editor");
-const { applyTransform, close, content, isPinned, supportedActions, title, togglePinned } = useTextFormatter({
+const lineWrapping = shallowRef(true);
+const {
+  applyTransform,
+  close,
+  content,
+  editorLanguage,
+  format,
+  isPinned,
+  statusMessage,
+  supportedActions,
+  title,
+  togglePinned,
+} = useTextFormatter({
   windowId: props.windowId,
+  getSelectedText: () => editor.value?.getSelectedText(),
+  replaceSelectedText: (value) => editor.value?.replaceSelectedText(value) ?? false,
 });
 
 function handleToolbarAction(action: FormatterToolbarAction) {
@@ -25,6 +39,10 @@ function handleToolbarAction(action: FormatterToolbarAction) {
     return;
   }
   void applyTransform(action);
+}
+
+function toggleLineWrapping() {
+  lineWrapping.value = !lineWrapping.value;
 }
 
 </script>
@@ -52,8 +70,22 @@ function handleToolbarAction(action: FormatterToolbarAction) {
       </button>
     </header>
     <section class="formatter-workspace">
-      <TextCodeEditor ref="editor" v-model="content" class="formatter-editor" />
-      <FormatterToolbar :supported-actions="supportedActions" @action="handleToolbarAction" />
+      <FormatterToolbar
+        :supported-actions="supportedActions"
+        :supports-folding="format === 'json'"
+        :status-message="statusMessage"
+        :line-wrapping="lineWrapping"
+        @action="handleToolbarAction"
+        @toggle-line-wrapping="toggleLineWrapping"
+      />
+      <TextCodeEditor
+        ref="editor"
+        v-model="content"
+        class="formatter-editor"
+        :format="format"
+        :editor-language="editorLanguage"
+        :line-wrapping="lineWrapping"
+      />
     </section>
   </main>
 </template>
@@ -174,7 +206,7 @@ function handleToolbarAction(action: FormatterToolbarAction) {
   display: grid;
   min-height: 0;
   overflow: hidden;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   background: var(--formatter-editor-background);
 }
 
