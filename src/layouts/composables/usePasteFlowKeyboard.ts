@@ -22,6 +22,7 @@ interface CardNavigationOptions {
 interface UsePasteFlowKeyboardOptions {
   readonly cards: Readonly<Ref<readonly ClipboardHistoryEntry[]>>;
   readonly getCardContainer: () => HTMLElement | null;
+  readonly scrollToCard: (cardId: number) => void;
   readonly cardNavigation: CardNavigationOptions;
   readonly closeMenus: () => void;
   readonly focusSearch: () => void;
@@ -44,9 +45,7 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
   }
 
   function scrollSelectedCardIntoView(cardId: number) {
-    const selector = `[data-card-id="${cardId}"]`;
-    const card = options.getCardContainer()?.querySelector<HTMLElement>(selector);
-    card?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    options.scrollToCard(cardId);
   }
 
   function resetSelection() {

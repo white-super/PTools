@@ -31,6 +31,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             cmds::toggle_window,
             cmds::hide_main_panel,
+            cmds::show_settings_window,
             cmds::paste_into_active_app,
             formatter_commands::show_text_formatter,
             formatter_commands::close_text_formatter,

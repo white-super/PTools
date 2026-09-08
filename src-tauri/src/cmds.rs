@@ -98,6 +98,22 @@ pub async fn hide_main_panel(app_handle: AppHandle) -> CmdResult {
 }
 
 #[tauri::command]
+pub async fn show_settings_window(app_handle: AppHandle) -> CmdResult {
+    run_main_panel_task(app_handle, |handle| {
+        let window = handle
+            .get_webview_window("setting")
+            .ok_or_else(|| "failed to find settings window".to_owned())?;
+        hide_main_panel_now(handle)?;
+        window
+            .unminimize()
+            .and_then(|_| window.show())
+            .and_then(|_| window.set_focus())
+            .map_err(|error| format!("failed to show settings window: {error}"))
+    })
+    .await
+}
+
+#[tauri::command]
 pub async fn paste_into_active_app(app_handle: AppHandle) -> CmdResult {
     run_main_panel_task(app_handle, |main_thread_handle| {
         system_permissions::ensure_automatic_paste_permission()?;

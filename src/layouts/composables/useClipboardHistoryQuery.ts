@@ -1,4 +1,4 @@
-import { computed, shallowRef, watch, type Ref } from "vue";
+import { computed, onUnmounted, shallowRef, watch, type Ref } from "vue";
 import type {
   ClipboardFilter,
   ClipboardHistoryEntry,
@@ -6,7 +6,8 @@ import type {
 } from "../types/settings";
 
 const SEARCH_DEBOUNCE_DELAY_MS = 180;
-const LOAD_MORE_THRESHOLD_PX = 120;
+const PREFETCH_VIEWPORT_COUNT = 1.5;
+const MIN_PREFETCH_DISTANCE_PX = 600;
 
 interface UseClipboardHistoryQueryOptions {
   readonly cards: Readonly<Ref<readonly ClipboardHistoryEntry[]>>;
@@ -16,12 +17,14 @@ interface UseClipboardHistoryQueryOptions {
   readonly reload: (query: ClipboardHistoryQuery) => Promise<void>;
   readonly reportError: (error: unknown) => void;
   readonly resetScroll: () => void;
+  readonly getCardContainer: () => HTMLElement | null;
 }
 
 export function useClipboardHistoryQuery(options: UseClipboardHistoryQueryOptions) {
   const activeFilter = shallowRef<ClipboardFilter>("all");
   const searchQuery = shallowRef("");
   let pendingSearchTimer: number | undefined;
+  let prefetchFrame: number | undefined;
   let loadedQueryKey: string | undefined;
   let activeReload: { readonly key: string; readonly promise: Promise<void> } | undefined;
   const historyQuery = computed<ClipboardHistoryQuery>(() => {
@@ -72,41 +75,45 @@ export function useClipboardHistoryQuery(options: UseClipboardHistoryQueryOption
       await activeReload.promise;
       return;
     }
-    if (loadedQueryKey !== key || options.isLoading.value) {
+    if (loadedQueryKey !== key) {
       await reloadHistory(query);
     }
   }
 
   function loadMoreWhenNearEnd(container: HTMLElement) {
     const remainingScroll = container.scrollWidth - container.clientWidth - container.scrollLeft;
+    const prefetchDistance = Math.max(
+      container.clientWidth * PREFETCH_VIEWPORT_COUNT,
+      MIN_PREFETCH_DISTANCE_PX,
+    );
     if (
-      remainingScroll > LOAD_MORE_THRESHOLD_PX
+      container.clientWidth === 0
+      || remainingScroll > prefetchDistance
       || !options.hasMore.value
       || options.isLoading.value
+      || pendingSearchTimer !== undefined
     ) {
       return;
     }
     void options.loadMore().catch(options.reportError);
   }
 
-  function handleCardContainerScroll(event: Event) {
-    const container = event.currentTarget;
-    if (container instanceof HTMLElement) {
-      loadMoreWhenNearEnd(container);
-    }
+  function schedulePrefetch() {
+    if (prefetchFrame !== undefined) return;
+    prefetchFrame = window.requestAnimationFrame(() => {
+      prefetchFrame = undefined;
+      const container = options.getCardContainer();
+      if (container) loadMoreWhenNearEnd(container);
+    });
   }
 
-  function scrollHorizontally(event: WheelEvent) {
-    const container = event.currentTarget;
-    if (!(container instanceof HTMLElement)) {
-      return;
-    }
-    const scrollOffset = event.deltaX || event.deltaY;
-    if (scrollOffset !== 0) {
-      container.scrollLeft += scrollOffset;
-      loadMoreWhenNearEnd(container);
-    }
-  }
+  // Recheck after appended cards render, even if scrolling stopped at the old edge.
+  watch(() => options.cards.value.length, schedulePrefetch, { flush: "post" });
+
+  onUnmounted(() => {
+    if (prefetchFrame !== undefined) window.cancelAnimationFrame(prefetchFrame);
+    clearPendingSearch(pendingSearchTimer);
+  });
 
   watch(
     historyQuery,
@@ -129,9 +136,8 @@ export function useClipboardHistoryQuery(options: UseClipboardHistoryQueryOption
   return {
     activeFilter,
     flushSearch,
-    handleCardContainerScroll,
+    handleCardContainerScroll: schedulePrefetch,
     searchQuery,
-    scrollHorizontally,
     visibleCards: options.cards,
   };
 }

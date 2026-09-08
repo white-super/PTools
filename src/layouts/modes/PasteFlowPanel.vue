@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { computed, shallowRef, useTemplateRef } from "vue";
+import { invoke } from "@tauri-apps/api/core";
 import { ElMessage, ElMessageBox } from "element-plus";
 import CardContextMenu from "../components/CardContextMenu.vue";
 import ClipboardFilterBar from "../components/ClipboardFilterBar.vue";
 import ClipboardSearchInput from "../components/ClipboardSearchInput.vue";
-import PasteCard from "../components/PasteCard/index.vue";
+import ClipboardMoreMenu from "../components/ClipboardMoreMenu.vue";
+import ClipboardCardList from "../components/ClipboardCardList.vue";
 import { DEFAULT_APP_THEME } from "../constants/appThemes";
 import { useClipboardHistory } from "../composables/useClipboardHistory";
 import { useClipboardHistoryQuery } from "../composables/useClipboardHistoryQuery";
 import { useCardContextMenu } from "../composables/useCardContextMenu";
 import { usePanelDismissal } from "../composables/usePanelDismissal";
 import { usePanelEmptyState } from "../composables/usePanelEmptyState";
-import { MAX_QUICK_SELECT_CARDS, usePasteFlowKeyboard } from "../composables/usePasteFlowKeyboard";
+import { usePasteFlowKeyboard } from "../composables/usePasteFlowKeyboard";
 import { useShortcutHelpPanel } from "../composables/useShortcutHelpPanel";
 import { useTextFormatterLauncher } from "../composables/useTextFormatterLauncher";
 import type { TextFormat } from "../features/text-formatter/types";
@@ -35,7 +37,8 @@ const {
 } = useClipboardHistory();
 const { openTextFormatter, openTextFormatterWithFormat } = useTextFormatterLauncher();
 const isPasting = shallowRef(false);
-const cardContainer = useTemplateRef<HTMLDivElement>("cardContainer");
+const isMoreMenuOpen = shallowRef(false);
+const cardList = useTemplateRef<InstanceType<typeof ClipboardCardList>>("cardList");
 const filterBar = useTemplateRef<InstanceType<typeof ClipboardFilterBar>>("filterBar");
 const searchInput = useTemplateRef<InstanceType<typeof ClipboardSearchInput>>("searchInput");
 const panelThemeClass = computed(() => `theme-${settings.value?.theme ?? DEFAULT_APP_THEME}`);
@@ -47,7 +50,6 @@ const {
   flushSearch,
   handleCardContainerScroll,
   searchQuery,
-  scrollHorizontally,
   visibleCards,
 } = useClipboardHistoryQuery({
   cards,
@@ -56,7 +58,8 @@ const {
   loadMore,
   reload,
   reportError: (error) => reportPanelError("load clipboard history", error),
-  resetScroll: () => cardContainer.value?.scrollTo({ left: 0, behavior: "auto" }),
+  resetScroll: () => cardList.value?.element?.scrollTo({ left: 0, behavior: "auto" }),
+  getCardContainer: () => cardList.value?.element ?? null,
 });
 const availableFilters = computed<readonly ClipboardFilter[]>(() => [
   "all",
@@ -73,8 +76,19 @@ function reportPanelError(action: string, error: unknown) {
   ElMessage.error(message);
 }
 function closeMenus() {
+  isMoreMenuOpen.value = false;
   closeCardContextMenu();
   filterBar.value?.closeMenus();
+}
+
+async function openSettings() {
+  closeMenus();
+  try {
+    await invoke("show_settings_window");
+    searchQuery.value = "";
+  } catch (error) {
+    reportPanelError("open settings", error);
+  }
 }
 
 function handleCardContextMenu(card: ClipboardHistoryEntry, event: MouseEvent) {
@@ -200,7 +214,8 @@ async function handleSearchSubmit() {
 const { selectedCardId, selectCard } = usePasteFlowKeyboard({
   cards: visibleCards,
   cardNavigation: { shortcutSettings: settings },
-  getCardContainer: () => cardContainer.value,
+  getCardContainer: () => cardList.value?.element ?? null,
+  scrollToCard: (id) => cardList.value?.scrollToCard(id),
   closeMenus,
   filterNavigation: {
     activeFilter,
@@ -238,28 +253,18 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = "";
         class="panel-search"
         @submit="handleSearchSubmit"
       />
+      <ClipboardMoreMenu v-model="isMoreMenuOpen" @settings="openSettings" />
     </div>
-    <div
+    <ClipboardCardList
       v-if="visibleCards.length"
-      ref="cardContainer"
-      class="card-container"
+      ref="cardList"
+      :cards="visibleCards"
+      :selected-card-id="selectedCardId"
+      @select="selectCard"
+      @paste="handlePaste"
+      @context-menu="handleCardContextMenu"
       @scroll="handleCardContainerScroll"
-      @wheel.prevent="scrollHorizontally"
-    >
-      <PasteCard
-        v-for="(card, index) in visibleCards"
-        :key="card.id"
-        :data-card-id="card.id"
-        :content="card.content"
-        :format="card.format"
-        :file-paths="card.filePaths"
-        :is-selected="selectedCardId === card.id"
-        :quick-key="index < MAX_QUICK_SELECT_CARDS ? index + 1 : undefined"
-        @select="selectCard(card.id)"
-        @paste="handlePaste(card)"
-        @context-menu="handleCardContextMenu(card, $event)"
-      />
-    </div>
+    />
     <div v-else class="empty-state">
       <p class="empty-state-title">{{ emptyStateTitle }}</p>
       <p class="empty-state-description">{{ emptyStateDescription }}</p>

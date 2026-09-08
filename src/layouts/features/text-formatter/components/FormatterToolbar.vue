@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import FormatterActionIcon from "./FormatterActionIcon.vue";
 import { formatterShortcutLabel } from "../formatterShortcuts";
 import type { FormatterToolbarAction, TextTransformAction } from "../types";
 
@@ -61,10 +62,12 @@ function isTextTransformAction(action: FormatterToolbarAction): action is TextTr
       :key="option.action"
       type="button"
       class="toolbar-action"
+      :aria-label="option.label"
+      :title="option.shortcutLabel ? `${option.label} (${option.shortcutLabel})` : option.label"
       @click="emit('action', option.action)"
     >
-      <span>{{ option.label }}</span>
-      <kbd v-if="option.shortcutLabel" class="toolbar-shortcut">
+      <FormatterActionIcon :action="option.action" />
+      <kbd v-if="option.shortcutLabel" class="toolbar-shortcut" aria-hidden="true">
         {{ option.shortcutLabel }}
       </kbd>
     </button>
@@ -81,9 +84,12 @@ function isTextTransformAction(action: FormatterToolbarAction): action is TextTr
       </span>
       <span class="toolbar-switch-label">自动换行</span>
     </label>
-    <span v-if="props.statusMessage" class="toolbar-status" role="status" aria-live="polite">
+    <span
+      v-if="props.statusMessage" class="toolbar-status" role="status" aria-live="polite"
+      :title="props.statusMessage"
+    >
       <span class="toolbar-status-mark" aria-hidden="true">✓</span>
-      {{ props.statusMessage }}
+      <span class="toolbar-status-text">{{ props.statusMessage }}</span>
     </span>
   </div>
 </template>
@@ -94,15 +100,13 @@ function isTextTransformAction(action: FormatterToolbarAction): action is TextTr
   min-width: 0;
   overflow: visible;
   align-items: center;
-  align-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
-  row-gap: 2px;
   min-height: 34px;
   padding: 3px 8px;
   border-bottom: 1px solid var(--app-border);
   background: var(--app-surface);
-  scrollbar-width: thin;
+  white-space: nowrap;
 }
 
 .toolbar-action {
@@ -111,10 +115,10 @@ function isTextTransformAction(action: FormatterToolbarAction): action is TextTr
   flex: 0 0 auto;
   min-height: 26px;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
   border: 0;
   border-radius: 8px;
-  padding: 4px 7px;
+  padding: 4px 6px;
   color: var(--app-secondary);
   background: transparent;
   font: inherit;
@@ -196,17 +200,24 @@ function isTextTransformAction(action: FormatterToolbarAction): action is TextTr
 
 .toolbar-status {
   display: inline-flex;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   align-items: center;
   gap: 5px;
   margin-left: auto;
-  padding: 0 4px 0 12px;
+  padding: 0 4px;
   color: var(--app-muted);
   font-size: 11px;
   white-space: nowrap;
 }
 
+.toolbar-status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .toolbar-status-mark {
+  flex: 0 0 auto;
   color: var(--app-primary);
   font-size: 12px;
 }

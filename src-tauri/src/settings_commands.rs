@@ -30,12 +30,16 @@ pub fn reset_app_settings(app_handle: AppHandle) -> CmdResult<AppSettings> {
 }
 
 #[tauri::command]
-pub fn get_clipboard_history(
+pub async fn get_clipboard_history(
     app_handle: AppHandle,
     query: ClipboardHistoryQuery,
 ) -> CmdResult<ClipboardHistoryPage> {
-    let settings = app_handle.state::<SettingsState>().get()?;
-    app_handle.state::<HistoryStore>().query(&settings, &query)
+    tauri::async_runtime::spawn_blocking(move || {
+        let settings = app_handle.state::<SettingsState>().get()?;
+        app_handle.state::<HistoryStore>().query(&settings, &query)
+    })
+    .await
+    .map_err(|error| format!("failed to query clipboard history in background: {error}"))?
 }
 
 #[tauri::command]

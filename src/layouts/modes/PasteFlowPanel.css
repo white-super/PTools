@@ -161,30 +161,6 @@
   min-width: 0;
 }
 
-.card-container {
-  display: flex;
-  box-sizing: border-box;
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  gap: 12px;
-  padding: 2px;
-  scrollbar-width: none;
-  overscroll-behavior: contain;
-}
-
-.card-container::-webkit-scrollbar {
-  display: none;
-}
-
-.card-container > * {
-  flex: 0 0 clamp(190px, 18vw, 240px);
-  height: 100%;
-}
-
 .empty-state {
   display: flex;
   flex: 1;

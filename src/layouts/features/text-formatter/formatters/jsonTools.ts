@@ -94,7 +94,9 @@ function decodeEscapedJsonText(content: string) {
   const candidates: string[] = [];
 
   try {
-    const decoded = JSON.parse(`"${content}"`);
+    // Protect literal whitespace in the string wrapper without re-escaping existing escapes.
+    const wrappedContent = content.replace(/[\r\n\t]/g, (character) => JSON.stringify(character).slice(1, -1));
+    const decoded = JSON.parse(`"${wrappedContent}"`);
     if (typeof decoded === "string") {
       candidates.push(decoded);
     }

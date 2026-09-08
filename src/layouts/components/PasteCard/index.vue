@@ -5,6 +5,7 @@ import type { ClipboardFormat } from "../../types/settings";
 
 const IMAGE_FILE_EXTENSIONS = ["avif", "gif", "heic", "heif", "jpeg", "jpg", "png", "tif", "tiff", "webp"];
 const GENERIC_FILE_LABEL = "文件";
+const TEXT_PREVIEW_CHARACTER_LIMIT = 2000;
 
 interface Props {
   content: string;
@@ -21,6 +22,9 @@ const FORMAT_LABELS: Record<ClipboardFormat, string> = {
 };
 
 const props = defineProps<Props>();
+// Only the card preview is shortened; paste and formatter actions use the full entry.
+const textPreview = computed(() => props.content.length > TEXT_PREVIEW_CHARACTER_LIMIT
+  ? `${props.content.slice(0, TEXT_PREVIEW_CHARACTER_LIMIT)}…` : props.content);
 const emit = defineEmits<{
   select: [];
   paste: [];
@@ -86,7 +90,7 @@ function handleFilePreviewError() {
       </div>
     </div>
     <div v-if="props.format === 'image'" class="card-media">
-      <img class="card-image" :src="imageSource" alt="剪贴板图片" draggable="false" decoding="async" />
+      <img class="card-image" :src="imageSource" alt="剪贴板图片" draggable="false" loading="lazy" decoding="async" />
     </div>
     <div v-else-if="props.format === 'file'" class="file-content">
       <div class="file-preview">
@@ -112,7 +116,7 @@ function handleFilePreviewError() {
         <p v-if="additionalFileCount" class="file-count">另有 {{ additionalFileCount }} 个文件</p>
       </div>
     </div>
-    <p v-else class="card-text">{{ props.content }}</p>
+    <p v-else class="card-text">{{ textPreview }}</p>
   </div>
 </template>
 
