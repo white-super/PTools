@@ -7,6 +7,7 @@ import ClipboardFilterBar from "../components/ClipboardFilterBar.vue";
 import ClipboardSearchInput from "../components/ClipboardSearchInput.vue";
 import ClipboardMoreMenu from "../components/ClipboardMoreMenu.vue";
 import ClipboardCardList from "../components/ClipboardCardList.vue";
+import { useTextDiffLauncher } from "../composables/useTextDiffLauncher";
 import { DEFAULT_APP_THEME } from "../constants/appThemes";
 import { useClipboardHistory } from "../composables/useClipboardHistory";
 import { useClipboardHistoryQuery } from "../composables/useClipboardHistoryQuery";
@@ -36,6 +37,7 @@ const {
   updateTag,
 } = useClipboardHistory();
 const { openTextFormatter, openTextFormatterWithFormat } = useTextFormatterLauncher();
+const { pending: diffPending, busy: diffBusy, select: selectDiff, cancel: cancelDiff } = useTextDiffLauncher();
 const isPasting = shallowRef(false);
 const isMoreMenuOpen = shallowRef(false);
 const cardList = useTemplateRef<InstanceType<typeof ClipboardCardList>>("cardList");
@@ -224,6 +226,7 @@ const { selectedCardId, selectCard } = usePasteFlowKeyboard({
   },
   focusSearch: () => searchInput.value?.focus(),
   formatCard: openTextFormatter,
+  diffCard: (card) => { void selectDiff(card); },
   pasteCard: (card) => void handlePaste(card),
   reportError: (error) => reportPanelError("listen for main panel focus", error),
 });
@@ -260,6 +263,9 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = "";
       ref="cardList"
       :cards="visibleCards"
       :selected-card-id="selectedCardId"
+      :diff-card-id="diffPending?.cardId"
+      :aria-busy="diffBusy"
+      @cancel-diff="cancelDiff"
       @select="selectCard"
       @paste="handlePaste"
       @context-menu="handleCardContextMenu"
@@ -276,6 +282,9 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = "";
       :tags="tags"
       :assigned-tag-ids="contextMenu.assignedTagIds"
       :tools="contextMenu.tools"
+      :diff-label="diffPending?.cardId === contextMenu.cardId ? '取消对比标记' : diffPending ? '与标记内容对比' : '标记为对比源'"
+      :diff-disabled="diffBusy || contextMenu.card.format === 'image'"
+      @diff="selectDiff(contextMenu.card); closeCardContextMenu()"
       @toggle-tag="handleToggleCardTag"
       @use-tool="handleUseCardTool"
       @delete="handleDeleteCard"

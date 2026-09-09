@@ -57,10 +57,21 @@ PTools is a utility built around copy and paste. It keeps copied text, images, a
 6. The toolbar includes an auto-wrap toggle enabled by default. When text is selected, formatting and encoding/decoding apply only to the selection; otherwise they apply to the full content.
 7. Press `Command + D` or `Alt + D` to pin or unpin the window. Pinned windows stay visible when unfocused, and multiple formatter windows can be open at the same time.
 
+## Text Comparison (1.4.0 Development Build)
+
+1. Select a text or text-file card and press `D` to mark the left source. Select another card and press `D` to open a side-by-side comparison. The context menu provides the same actions.
+2. A Diff icon appears in the card's fixed-height header without resizing the card. Press `D` on the marked card again or click the icon to clear it. The snapshot survives search, filters, pagination, and panel hiding, and clears after opening a comparison or exiting the app. Multi-file cards prompt you to select one file.
+3. Raw comparison is the default. Enable formatted comparison for JSON/JSONC, XML, or HTML, with automatic or manual type selection and support for escaped JSON. XML/HTML retain meaningful whitespace; formatted equality does not imply byte-identical source files.
+4. Includes inline highlights, synchronized scrolling, difference navigation, swapping sides, line wrapping, and collapsing unchanged regions. Use `Ctrl + Q/E` for previous/next difference and `Ctrl + R` to recompute.
+5. Edit either side directly with live difference highlighting and undo/redo. Typing does not reformat your text; press `Ctrl + R` to reformat when formatted comparison is enabled. Each side supports importing UTF-8 text files (including UTF-8 BOM), restoring the source, and copying displayed content. Images, binary files, and directories are unsupported. Edits affect temporary copies only; files and history entries are never overwritten automatically.
+6. Multiple independent windows follow the app theme and remain open when unfocused. Use `Command + D` / `Alt + D` to toggle always-on-top. The global clipboard shortcut remains available. Closing an edited draft requires confirmation.
+7. Full formatting and comparison run in a cancellable background worker on your device. Direct edits use local incremental comparison to preserve the caret and undo history. Content is not uploaded.
+
 ## TODO
 
 - [ ] **Password manager**: Generate random passwords and store them encrypted in the local database.
 - [x] **Extended formatting**: Support XML, HTML, URL encode/decode, date formatting and conversion, and Base64 encoding/decoding.
+- [x] **Text comparison**: Select text or file cards with two presses of `D`, with side-by-side differences and formatted JSON/XML/HTML comparison.
 - [ ] **Sequential paste**: When enabled, arrange multiple clipboard items in order and paste them one by one with a shortcut.
 - [ ] **cURL request tool**: Parse cURL text in a dedicated request workspace and inspect responses.
 - [ ] **Image crop tool**: Crop, resize, copy, or save clipboard images.

@@ -5,7 +5,7 @@ import type { ClipboardHistoryEntry, ClipboardTag } from "../types/settings";
 
 const MENU_WIDTH = 152;
 const MENU_MAX_HEIGHT = 264;
-const MENU_BASE_HEIGHT = 112;
+const MENU_BASE_HEIGHT = 144;
 const MENU_ROW_HEIGHT = 32;
 const MENU_VERTICAL_PADDING = 8;
 const VIEWPORT_MARGIN = 8;

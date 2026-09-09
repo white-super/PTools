@@ -8,6 +8,7 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/
 export default defineConfig(async () => ({
+  worker: { format: "es" },
   plugins: [
       vue(),
       // 自动按需导入 API

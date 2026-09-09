@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { computed, shallowRef } from "vue";
+import CardHeader from "./CardHeader.vue";
 import type { ClipboardFormat } from "../../types/settings";
 
 const IMAGE_FILE_EXTENSIONS = ["avif", "gif", "heic", "heif", "jpeg", "jpg", "png", "tif", "tiff", "webp"];
@@ -13,13 +14,8 @@ interface Props {
   isSelected: boolean;
   filePaths: readonly string[];
   quickKey?: number;
+  isDiffSource?: boolean;
 }
-
-const FORMAT_LABELS: Record<ClipboardFormat, string> = {
-  text: "文本",
-  image: "图片",
-  file: "文件",
-};
 
 const props = defineProps<Props>();
 // Only the card preview is shortened; paste and formatter actions use the full entry.
@@ -29,6 +25,7 @@ const emit = defineEmits<{
   select: [];
   paste: [];
   contextMenu: [event: MouseEvent];
+  cancelDiff: [];
 }>();
 
 const imageSource = computed(() =>
@@ -83,12 +80,13 @@ function handleFilePreviewError() {
     @dblclick.prevent="handleDoubleClick"
     @contextmenu.prevent="emit('contextMenu', $event)"
   >
-    <div class="card-header">
-      <span v-if="props.quickKey" class="quick-key">{{ props.quickKey }}</span>
-      <div class="card-badges">
-        <span class="format-label">{{ FORMAT_LABELS[props.format] }}</span>
-      </div>
-    </div>
+    <CardHeader
+      :format="format"
+      :quick-key="quickKey"
+      :is-diff-source="isDiffSource"
+      :is-selected="props.isSelected"
+      @cancel-diff="emit('cancelDiff')"
+    />
     <div v-if="props.format === 'image'" class="card-media">
       <img class="card-image" :src="imageSource" alt="剪贴板图片" draggable="false" loading="lazy" decoding="async" />
     </div>
@@ -122,6 +120,7 @@ function handleFilePreviewError() {
 
 <style scoped>
 .card {
+  position: relative;
   display: flex;
   box-sizing: border-box;
   height: 100%;
@@ -129,14 +128,29 @@ function handleFilePreviewError() {
   flex-direction: column;
   border: 1px solid var(--panel-card-border, #e5e7eb);
   border-radius: 12px;
-  padding: 10px;
+  padding: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
   color: var(--panel-card-text, #374151);
   background: var(--panel-card-background, #ffffff);
   box-shadow: var(--panel-card-shadow, 0 1px 2px rgba(15, 23, 42, 0.06));
   backdrop-filter: var(--panel-card-backdrop, none);
   -webkit-backdrop-filter: var(--panel-card-backdrop, none);
   cursor: default;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+  --card-header-background-current: var(--panel-card-header-background);
+  --card-header-border-current: var(--panel-card-header-border);
+  --card-header-text-current: var(--panel-card-header-text);
+  --card-header-overlay-current: var(--panel-card-header-overlay, transparent);
+  --card-header-accent-current: var(--panel-card-header-accent, transparent);
+  --card-header-overlay-opacity: 0;
+  --card-header-key-background: var(--panel-card-header-key-background);
+  --card-header-key-border: var(--panel-card-header-key-border);
+  --card-header-key-text: var(--panel-card-header-key-text);
+  --card-header-selected-key-background: var(--panel-card-header-selected-key-background);
+  --card-header-selected-key-border: var(--panel-card-header-selected-key-border);
+  --card-header-selected-key-text: var(--panel-card-header-selected-key-text);
+  transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms ease;
+  will-change: transform;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -146,48 +160,15 @@ function handleFilePreviewError() {
   -webkit-user-select: none;
 }
 
-.card-header {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-
-.card-badges {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.quick-key {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 5px;
-  color: var(--panel-card-chip-text, #64748b);
-  background: var(--panel-card-chip-background, #f1f5f9);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.format-label {
-  border-radius: 4px;
-  padding: 2px 5px;
-  color: var(--panel-card-chip-text, #64748b);
-  background: var(--panel-card-chip-background, #f1f5f9);
-  font-size: 11px;
-}
-
 .card-text {
   display: -webkit-box;
   flex: 1;
   margin: 0;
   overflow: hidden;
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   text-overflow: ellipsis;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 12;
@@ -281,14 +262,54 @@ function handleFilePreviewError() {
 }
 
 .card:hover {
+  --card-header-background-current: var(--panel-card-header-hover-background, var(--panel-card-header-background));
+  --card-header-border-current: var(--panel-card-header-hover-border, var(--panel-card-header-border));
+  --card-header-text-current: var(--panel-card-header-hover-text, var(--panel-card-header-text));
+  --card-header-overlay-current: var(--panel-card-header-hover-overlay, var(--panel-card-header-overlay, transparent));
+  --card-header-accent-current: var(--panel-card-header-hover-accent, transparent);
+  --card-header-overlay-opacity: 1;
   border-color: var(--panel-card-hover-border, #cbd5e1);
-  box-shadow: var(--panel-card-hover-shadow, 0 7px 18px rgba(15, 23, 42, 0.08));
-  transform: translateY(-1px);
+  box-shadow: var(--panel-card-hover-shadow, 0 10px 24px rgba(15, 23, 42, 0.12));
+  transform: translateY(-3px);
+  z-index: 1;
 }
 
 .card-selected {
+  --card-header-background-current: var(--panel-card-header-selected-background, var(--panel-card-header-background));
+  --card-header-border-current: var(--panel-card-header-selected-border, var(--panel-card-header-border));
+  --card-header-text-current: var(--panel-card-header-selected-text, var(--panel-card-header-text));
+  --card-header-overlay-current: var(--panel-card-header-selected-overlay, var(--panel-card-header-overlay, transparent));
+  --card-header-accent-current: var(--panel-card-header-selected-accent, var(--app-primary));
+  --card-header-overlay-opacity: 1;
   border-color: var(--panel-card-selected-border, #93c5fd);
   background: var(--panel-card-selected-background, #f8fbff);
-  box-shadow: var(--panel-card-selected-shadow, 0 0 0 2px rgba(147, 197, 253, 0.34));
+  box-shadow: var(--panel-card-selected-shadow, 0 0 0 2px rgba(147, 197, 253, 0.34), 0 8px 22px rgba(15, 23, 42, 0.1));
+  transform: translateY(-2px);
+  z-index: 1;
+}
+
+.card-selected:hover {
+  --card-header-background-current: var(--panel-card-header-selected-hover-background, var(--panel-card-header-selected-background, var(--panel-card-header-background)));
+  --card-header-border-current: var(--panel-card-header-selected-border, var(--panel-card-header-border));
+  --card-header-text-current: var(--panel-card-header-selected-text, var(--panel-card-header-text));
+  --card-header-overlay-current: var(--panel-card-header-selected-hover-overlay, var(--panel-card-header-selected-overlay, transparent));
+  --card-header-accent-current: var(--panel-card-header-selected-accent, var(--app-primary));
+  --card-header-overlay-opacity: 1;
+  box-shadow: var(--panel-card-selected-hover-shadow, var(--panel-card-selected-shadow));
+  transform: translateY(-4px);
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: border-color 0.01ms linear, box-shadow 0.01ms linear, background-color 0.01ms linear;
+    transform: none;
+  }
+
+  .card:hover,
+  .card-selected,
+  .card-selected:hover {
+    transform: none;
+  }
 }
 </style>

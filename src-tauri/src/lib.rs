@@ -2,6 +2,7 @@ use tauri::{App, Manager};
 
 mod cmds;
 mod core;
+mod diff_commands;
 mod formatter_commands;
 mod help_commands;
 mod platform;
@@ -33,6 +34,11 @@ pub fn run() {
             cmds::hide_main_panel,
             cmds::show_settings_window,
             cmds::paste_into_active_app,
+            diff_commands::show_text_diff,
+            diff_commands::get_text_diff_input,
+            diff_commands::set_text_diff_pinned,
+            diff_commands::close_text_diff,
+            diff_commands::read_diff_file,
             formatter_commands::show_text_formatter,
             formatter_commands::close_text_formatter,
             formatter_commands::get_text_formatter_input,
@@ -73,6 +79,7 @@ fn set_up(app: &mut App) -> Result<(), String> {
     app.manage(tag_store);
     app.manage(storage::SettingsState::new(settings.clone()));
     app.manage(core::formatter_window::TextFormatterState::default());
+    app.manage(core::diff_window::DiffState::default());
     core::handle::Handle::create_main_window(app)?;
     core::help_window::create(app)?;
     core::handle::Handle::create_setting_window(app)?;

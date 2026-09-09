@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "text-diff",
+  "description": "Local text comparison window: events, dragging, and explicit text copy",
+  "windows": ["text-diff-*"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "clipboard:allow-write-text"
+  ]
+}

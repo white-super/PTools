@@ -12,6 +12,8 @@ interface Props {
   tags: readonly ClipboardTag[];
   assignedTagIds: readonly number[];
   tools: readonly TextFormatterOption[];
+  diffLabel: string;
+  diffDisabled: boolean;
 }
 
 const props = defineProps<Props>();
@@ -19,6 +21,7 @@ const emit = defineEmits<{
   toggleTag: [tagId: number];
   useTool: [format: TextFormat];
   delete: [];
+  diff: [];
 }>();
 
 const opensSubmenuLeft = computed(
@@ -104,6 +107,9 @@ const opensSubmenuLeft = computed(
       </div>
     </div>
     <div class="context-menu-divider"></div>
+    <button type="button" class="context-menu-item" role="menuitem" :disabled="diffDisabled" @click="emit('diff')">
+      {{ diffLabel }}
+    </button>
     <button
       type="button"
       class="context-menu-item context-menu-item-danger"

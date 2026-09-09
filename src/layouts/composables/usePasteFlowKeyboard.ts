@@ -28,6 +28,7 @@ interface UsePasteFlowKeyboardOptions {
   readonly focusSearch: () => void;
   readonly filterNavigation: FilterNavigationOptions;
   readonly formatCard: (card: ClipboardHistoryEntry) => void;
+  readonly diffCard: (card: ClipboardHistoryEntry) => void;
   readonly pasteCard: (card: ClipboardHistoryEntry) => void;
   readonly reportError: (error: unknown) => void;
 }
@@ -67,6 +68,15 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
     if (card) {
       options.formatCard(card);
     }
+  }
+
+  function diffSelectedCard(event: KeyboardEvent) {
+    if (event.repeat) return;
+    const card = options.cards.value.find((entry) => entry.id === selectedCardId.value) ?? options.cards.value[0];
+    if (!card) return;
+    event.preventDefault();
+    options.closeMenus();
+    options.diffCard(card);
   }
 
   function pasteQuickSelectedCard(key: string) {
@@ -146,6 +156,7 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
   }
 
   function handleNavigationKeydown(event: KeyboardEvent) {
+    if (event.defaultPrevented || event.isComposing || (event.target instanceof Element && event.target.closest(".el-overlay"))) return;
     if (event.metaKey && event.key.toLowerCase() === "f") {
       event.preventDefault();
       options.closeMenus();
@@ -162,6 +173,10 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
       return;
     }
     if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+      return;
+    }
+    if (event.key.toLowerCase() === "d") {
+      diffSelectedCard(event);
       return;
     }
     if (event.key.toLowerCase() === "f") {
@@ -194,6 +209,7 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
   function isEditableTarget(target: EventTarget | null) {
     return target instanceof HTMLInputElement
       || target instanceof HTMLTextAreaElement
+      || target instanceof HTMLSelectElement
       || (target instanceof HTMLElement && target.isContentEditable);
   }
 

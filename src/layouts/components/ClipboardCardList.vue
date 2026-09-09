@@ -8,12 +8,14 @@ import { CARD_LIST_PADDING, cardWidthForViewport, horizontalCardLayout, scrollOf
 const props = defineProps<{
   cards: readonly ClipboardHistoryEntry[];
   selectedCardId?: number;
+  diffCardId?: number;
 }>();
 const emit = defineEmits<{
   select: [id: number];
   paste: [card: ClipboardHistoryEntry];
   contextMenu: [card: ClipboardHistoryEntry, event: MouseEvent];
   scroll: [];
+  cancelDiff: [];
 }>();
 const element = useTemplateRef<HTMLDivElement>("element");
 const viewportWidth = shallowRef(0);
@@ -94,8 +96,10 @@ defineExpose({ element, scrollToCard });
         :format="card.format"
         :file-paths="card.filePaths"
         :is-selected="props.selectedCardId === card.id"
+        :is-diff-source="props.diffCardId === card.id"
         :quick-key="index < MAX_QUICK_SELECT_CARDS ? index + 1 : undefined"
         @select="emit('select', card.id)"
+        @cancel-diff="emit('cancelDiff')"
         @paste="emit('paste', card)"
         @context-menu="emit('contextMenu', card, $event)"
       />

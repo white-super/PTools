@@ -23,7 +23,8 @@ export function usePanelDismissal(options: UsePanelDismissalOptions = {}) {
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key !== ESCAPE_KEY) {
+    if (event.key !== ESCAPE_KEY || event.defaultPrevented
+      || (event.target instanceof Element && event.target.closest(".el-overlay"))) {
       return;
     }
 
