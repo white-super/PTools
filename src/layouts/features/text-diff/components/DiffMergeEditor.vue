@@ -5,6 +5,7 @@ import { search } from "@codemirror/search";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "codemirror";
+import { codeMirrorChineseLocalization } from "../../../utils/codeMirrorLocalization";
 import { diffEditorTheme, diffHighlight, diffLanguage } from "../editorTheme";
 import type { DiffResult, DiffSide } from "../types";
 
@@ -20,7 +21,8 @@ let view: MergeView | undefined;
 let current = -1;
 
 function extensions(wrap: Compartment, side: DiffSide) {
-  return [basicSetup, search({ top: true }), diffEditorTheme, diffHighlight, diffLanguage(props.result.format),
+  return [basicSetup, search({ top: true }), codeMirrorChineseLocalization,
+    diffEditorTheme, diffHighlight, diffLanguage(props.result.format),
     EditorState.lineSeparator.of("\n"),
     EditorView.contentAttributes.of({ "aria-label": side === "left" ? "左侧对比内容" : "右侧对比内容" }),
     EditorView.updateListener.of(update => {

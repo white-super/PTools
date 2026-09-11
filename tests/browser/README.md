@@ -19,6 +19,7 @@ async () => {
     worker: await checks.runDiffWorkerChecks(),
     diffAlignment: await alignment.runDiffAlignmentChecks(),
     cardHeader: await cards.runCardHeaderChecks(),
+    cardViewport: await cards.runCardViewportRecoveryChecks(),
   };
 }
 ```
@@ -27,7 +28,7 @@ Vite may reload the page when optimizing newly imported dependencies for the fir
 
 These checks mount actual Vue components, CodeMirror editors, and Web Workers. The desktop IPC boundary is mocked: no real clipboard data, files, history, or native windows are modified. Native window focus, multi-monitor behavior, file dialogs, and global shortcuts still require macOS/Windows application testing.
 
-Includes direct editing on both sides, live highlights, caret/focus retention, undo/redo, copying edited content, invalid JSON recovery, the pinned empty-comparison entry, and unchanged card geometry when adding/removing Diff-L/DIFF-R markers.
+Includes direct editing on both sides, live highlights, caret/focus retention, undo/redo, copying edited content, invalid JSON recovery, the pinned empty-comparison entry, unchanged card geometry when adding/removing Diff-L/DIFF-R markers, and virtual-card viewport recovery after the hidden main panel is shown.
 
 Node regression tests: `node --test tests/*.test.mjs`.
 

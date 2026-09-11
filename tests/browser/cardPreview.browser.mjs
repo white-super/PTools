@@ -1,4 +1,5 @@
 import { createApp, h, nextTick, shallowRef } from "vue";
+import ClipboardCardList from "../../src/layouts/components/ClipboardCardList.vue";
 import PasteCard from "../../src/layouts/components/PasteCard/index.vue";
 import "../../src/layouts/modes/PasteFlowPanel.css";
 
@@ -20,6 +21,46 @@ function mountPreview(theme, style, content) {
 
 function assert(value, message) {
   if (!value) throw new Error(message);
+}
+
+async function waitFor(predicate, message) {
+  const deadline = performance.now() + 10000;
+  while (!predicate()) {
+    if (performance.now() > deadline) throw new Error(message);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
+function createHistoryCards() {
+  return Array.from({ length: 20 }, (_, index) => ({
+    id: index + 1,
+    format: "text",
+    content: `Card ${index + 1}`,
+    filePaths: [],
+    updatedAt: index,
+    tagIds: [],
+  }));
+}
+
+function installPanelEventMock(calls, callbacks) {
+  let nextCallbackId = 1;
+  window.__TAURI_INTERNALS__ = {
+    transformCallback: (callback) => {
+      const callbackId = nextCallbackId++;
+      callbacks.set(callbackId, callback);
+      return callbackId;
+    },
+    invoke: async (command, args) => {
+      calls.push({ command, args });
+      if (command === "plugin:event|listen") return args.handler;
+      if (command === "plugin:event|unlisten") return;
+      throw new Error(`Unexpected native call: ${command}`);
+    },
+  };
+}
+
+async function nextFrame() {
+  await new Promise((resolve) => requestAnimationFrame(resolve));
 }
 
 function cardGeometry(host) {
@@ -129,6 +170,48 @@ export async function runCardHeaderChecks() {
     harness.app.unmount();
     harness.host.remove();
     document.documentElement.className = previousTheme;
+  }
+}
+
+export async function runCardViewportRecoveryChecks() {
+  const previousInternals = window.__TAURI_INTERNALS__;
+  const PreviousResizeObserver = window.ResizeObserver;
+  const callbacks = new Map();
+  const calls = [];
+  let resizeCallback;
+  window.ResizeObserver = class {
+    constructor(callback) { resizeCallback = callback; }
+    observe() {}
+    disconnect() {}
+  };
+  installPanelEventMock(calls, callbacks);
+  const host = document.createElement("div");
+  host.style.cssText = "position:fixed;width:1200px;height:260px;display:none";
+  document.body.append(host);
+  const app = createApp({ setup: () => () => h(ClipboardCardList, { cards: createHistoryCards() }) });
+  try {
+    app.mount(host);
+    await waitFor(() => calls.some((call) => call.args?.event === "ptools://main-panel-focus"),
+      "card list did not listen for the main panel display");
+    const hiddenCount = host.querySelectorAll("[data-card-id]").length;
+    host.style.display = "block";
+    const listener = calls.find((call) => call.args?.event === "ptools://main-panel-focus");
+    callbacks.get(listener.args.handler)({ payload: true });
+    await nextFrame();
+    await nextTick();
+    const visibleCount = host.querySelectorAll("[data-card-id]").length;
+    assert(visibleCount > hiddenCount, "panel display did not refresh the virtual viewport");
+    host.style.display = "none";
+    resizeCallback();
+    await nextTick();
+    assert(host.querySelectorAll("[data-card-id]").length === visibleCount,
+      "a hidden zero-width measurement replaced the valid viewport");
+    return { passed: true, hiddenCount, visibleCount };
+  } finally {
+    app.unmount();
+    host.remove();
+    window.ResizeObserver = PreviousResizeObserver;
+    window.__TAURI_INTERNALS__ = previousInternals;
   }
 }
 

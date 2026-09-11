@@ -9,6 +9,7 @@ import type { TextFormatterInput, TextTransformAction } from "../types";
 
 interface UseTextFormatterOptions {
   readonly windowId: string;
+  readonly closeSearch?: () => boolean;
   readonly getSelectedText?: () => string | undefined;
   readonly replaceSelectedText?: (value: string) => boolean;
   readonly toggleLineWrapping: () => void;
@@ -95,6 +96,10 @@ export function useTextFormatter(options: UseTextFormatterOptions) {
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === "Escape") {
       event.preventDefault();
+      event.stopPropagation();
+      if (options.closeSearch?.()) {
+        return;
+      }
       close();
       return;
     }

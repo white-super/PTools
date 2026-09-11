@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { HighlightStyle, foldAll, syntaxHighlighting, unfoldAll } from "@codemirror/language";
-import { search } from "@codemirror/search";
+import { closeSearchPanel, search } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
 import { basicSetup, EditorView } from "codemirror";
 import { onMounted, onUnmounted, shallowRef, useTemplateRef, watch } from "vue";
 import { json } from "@codemirror/lang-json";
+import { codeMirrorChineseLocalization } from "../../../utils/codeMirrorLocalization";
 import type { TextFormat } from "../types";
 
 const content = defineModel<string>({ required: true });
@@ -64,6 +65,7 @@ function createEditor(parent: HTMLElement) {
     extensions: [
       basicSetup,
       search({ top: true }),
+      codeMirrorChineseLocalization,
       ...(props.lineWrapping ? [EditorView.lineWrapping] : []),
       ...(props.editorLanguage === "json" ? [json()] : []),
       editorTheme,
@@ -127,6 +129,11 @@ function replaceSelectedText(value: string) {
   return true;
 }
 
+function closeSearch() {
+  const view = editorView.value;
+  return view ? closeSearchPanel(view) : false;
+}
+
 watch(content, replaceEditorContent);
 watch(() => props.editorLanguage, recreateEditor);
 watch(() => props.lineWrapping, recreateEditor);
@@ -143,6 +150,7 @@ onUnmounted(() => {
 });
 
 defineExpose({
+  closeSearch,
   foldAll: foldAllContent,
   getSelectedText,
   replaceSelectedText,

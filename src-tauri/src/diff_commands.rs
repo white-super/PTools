@@ -19,7 +19,7 @@ pub async fn show_text_diff(
         if result.is_err() {
             let panel = app.get_webview_window("main").ok_or("剪贴板面板不存在")?;
             let cursor = app.cursor_position().map_err(|e| e.to_string())?;
-            crate::platform::show_main_panel(app, &panel, cursor)?;
+            crate::cmds::show_main_panel_now(app, &panel, cursor)?;
         }
         result
     })

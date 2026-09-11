@@ -25,6 +25,7 @@ const {
   togglePinned,
 } = useTextFormatter({
   windowId: props.windowId,
+  closeSearch: () => editor.value?.closeSearch() ?? false,
   getSelectedText: () => editor.value?.getSelectedText(),
   replaceSelectedText: (value) => editor.value?.replaceSelectedText(value) ?? false,
   toggleLineWrapping,

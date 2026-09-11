@@ -1,8 +1,8 @@
 #[cfg(not(target_os = "windows"))]
 use super::apply_main_panel_layout;
 use super::{
-    MainPanelState, MAIN_PANEL_BLUR_EVENT, MAIN_PANEL_FOCUS_EVENT, MAIN_PANEL_LABEL,
-    WINDOW_MOVED_EVENT, WINDOW_RESIZED_EVENT,
+    MainPanelState, MAIN_PANEL_BLUR_EVENT, MAIN_PANEL_LABEL, WINDOW_MOVED_EVENT,
+    WINDOW_RESIZED_EVENT,
 };
 #[cfg(not(target_os = "windows"))]
 use tauri::image::Image;
@@ -48,9 +48,6 @@ pub(crate) fn initialize_main_panel(app: &mut App, window: WebviewWindow) -> Res
     window.on_window_event(move |event| {
         let target = EventTarget::labeled(MAIN_PANEL_LABEL);
         match event {
-            WindowEvent::Focused(true) => {
-                let _ = app_handle.emit_to(target, MAIN_PANEL_FOCUS_EVENT, true);
-            }
             WindowEvent::Focused(false) => {
                 let panel_state = app_handle.state::<MainPanelState>();
                 if !panel_state.take_blur_suppression() {

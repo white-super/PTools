@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { computed, onMounted, onUnmounted, shallowRef, useTemplateRef } from "vue";
 import PasteCard from "./PasteCard/index.vue";
 import type { PanelNoticeState } from "../composables/usePanelNotice";
@@ -43,11 +44,25 @@ let resizeObserver: ResizeObserver;
 let wheelFrame: number | undefined;
 let pendingWheelOffset = 0;
 const WHEEL_LINE_HEIGHT_PX = 16;
+const MAIN_PANEL_FOCUS_EVENT = "ptools://main-panel-focus";
+let unlistenPanelFocus: UnlistenFn | undefined;
+let viewportFrame: number | undefined;
+let disposed = false;
 
 function updateViewport() {
-  viewportWidth.value = element.value!.clientWidth;
-  cardWidth.value = cardWidthForViewport(window.innerWidth);
+  const container = element.value;
+  if (!container || container.clientWidth <= 0) return;
+  viewportWidth.value = container.clientWidth;
+  cardWidth.value = cardWidthForViewport(container.clientWidth);
   handleScroll();
+}
+
+function scheduleViewportUpdate() {
+  if (viewportFrame !== undefined) return;
+  viewportFrame = window.requestAnimationFrame(() => {
+    viewportFrame = undefined;
+    updateViewport();
+  });
 }
 
 function handleScroll() {
@@ -88,11 +103,23 @@ onMounted(() => {
   resizeObserver = new ResizeObserver(updateViewport);
   resizeObserver.observe(element.value!);
   updateViewport();
+  void listen(MAIN_PANEL_FOCUS_EVENT, scheduleViewportUpdate)
+    .then((unlisten) => {
+      if (disposed) {
+        unlisten();
+        return;
+      }
+      unlistenPanelFocus = unlisten;
+    })
+    .catch((error) => console.error("Failed to listen for main panel layout updates", error));
 });
 
 onUnmounted(() => {
+  disposed = true;
   resizeObserver.disconnect();
   if (wheelFrame !== undefined) window.cancelAnimationFrame(wheelFrame);
+  if (viewportFrame !== undefined) window.cancelAnimationFrame(viewportFrame);
+  unlistenPanelFocus?.();
 });
 
 defineExpose({ element, scrollToCard });

@@ -1,6 +1,6 @@
 use super::{
     apply_main_panel_layout, MainPanelState, PasteTargetState, MAIN_PANEL_BLUR_EVENT,
-    MAIN_PANEL_FOCUS_EVENT, MAIN_PANEL_LABEL, WINDOW_MOVED_EVENT, WINDOW_RESIZED_EVENT,
+    MAIN_PANEL_LABEL, WINDOW_MOVED_EVENT, WINDOW_RESIZED_EVENT,
 };
 use core_foundation::{
     base::TCFType,
@@ -87,7 +87,6 @@ pub(crate) fn initialize_main_panel(app: &mut App, window: WebviewWindow) -> Res
             | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
     );
     let delegate = panel_delegate!(MyPanelDelegate {
-        window_did_become_key,
         window_did_resign_key
     });
     let app_handle = app.handle().clone();
@@ -100,9 +99,6 @@ pub(crate) fn initialize_main_panel(app: &mut App, window: WebviewWindow) -> Res
         };
 
         match delegate_name.as_str() {
-            "window_did_become_key" => {
-                let _ = window.emit_to(target, MAIN_PANEL_FOCUS_EVENT, true);
-            }
             "window_did_resign_key" => {
                 let panel_state = app_handle.state::<MainPanelState>();
                 if !panel_state.take_blur_suppression() {

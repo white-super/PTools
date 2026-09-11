@@ -1,8 +1,23 @@
-use tauri::{AppHandle, Emitter, EventTarget, Manager};
+use tauri::{AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, WebviewWindow};
 
 use crate::{platform, system_permissions};
 
 type CmdResult<T = ()> = Result<T, String>;
+
+pub(crate) fn show_main_panel_now(
+    app_handle: &AppHandle,
+    window: &WebviewWindow,
+    cursor_position: PhysicalPosition<f64>,
+) -> CmdResult {
+    platform::show_main_panel(app_handle, window, cursor_position)?;
+    app_handle
+        .emit_to(
+            EventTarget::labeled(platform::MAIN_PANEL_LABEL),
+            platform::MAIN_PANEL_FOCUS_EVENT,
+            true,
+        )
+        .map_err(|error| format!("failed to notify the visible main panel: {error}"))
+}
 
 pub(crate) fn hide_main_panel_now(app_handle: &AppHandle) -> CmdResult {
     crate::core::help_window::hide(app_handle)?;
@@ -83,8 +98,7 @@ pub fn toggle_window(app_handle: tauri::AppHandle) {
         if let Err(error) = crate::core::formatter_window::destroy_unpinned(&main_thread_handle) {
             eprintln!("failed to close unpinned text formatter windows: {error}");
         }
-        if let Err(error) = platform::show_main_panel(&main_thread_handle, &window, cursor_position)
-        {
+        if let Err(error) = show_main_panel_now(&main_thread_handle, &window, cursor_position) {
             eprintln!("failed to show main panel: {error}");
         }
         main_thread_handle
