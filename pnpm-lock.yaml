@@ -20,6 +20,9 @@ dependencies:
   '@codemirror/merge':
     specifier: ^6.12.2
     version: 6.12.2
+  '@codemirror/search':
+    specifier: ^6.7.1
+    version: 6.7.1
   '@codemirror/state':
     specifier: ^6.7.4
     version: 6.7.4

@@ -26,6 +26,7 @@ pub(crate) use windows::*;
 pub(crate) const MAIN_PANEL_LABEL: &str = "main";
 pub(crate) const MAIN_PANEL_FOCUS_EVENT: &str = "ptools://main-panel-focus";
 pub(crate) const MAIN_PANEL_BLUR_EVENT: &str = "ptools://main-panel-blur";
+pub(crate) const MAIN_PANEL_DISMISS_EVENT: &str = "ptools://main-panel-dismiss";
 pub(crate) const WINDOW_MOVED_EVENT: &str = "tauri://move";
 pub(crate) const WINDOW_RESIZED_EVENT: &str = "tauri://resize";
 

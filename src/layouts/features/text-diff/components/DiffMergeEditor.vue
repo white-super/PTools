@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, useTemplateRef, watch } from "vue";
 import { Change, MergeView } from "@codemirror/merge";
+import { search } from "@codemirror/search";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { basicSetup } from "codemirror";
@@ -19,7 +20,7 @@ let view: MergeView | undefined;
 let current = -1;
 
 function extensions(wrap: Compartment, side: DiffSide) {
-  return [basicSetup, diffEditorTheme, diffHighlight, diffLanguage(props.result.format),
+  return [basicSetup, search({ top: true }), diffEditorTheme, diffHighlight, diffLanguage(props.result.format),
     EditorState.lineSeparator.of("\n"),
     EditorView.contentAttributes.of({ "aria-label": side === "left" ? "左侧对比内容" : "右侧对比内容" }),
     EditorView.updateListener.of(update => {
@@ -41,8 +42,8 @@ function create() {
     diffConfig: { override: () => changes },
     collapseUnchanged: props.collapse ? {} : undefined,
   });
-  // Initial full diff comes from the worker. Native incremental edits retain selection and undo history.
-  view.reconfigure({ diffConfig: { scanLimit: Infinity } });
+  // Initial full diff comes from the worker. Later edits use CodeMirror's precise default diffing.
+  view.reconfigure({ diffConfig: {} });
   current = -1;
   emit("stats", view.chunks.length, 0);
 }

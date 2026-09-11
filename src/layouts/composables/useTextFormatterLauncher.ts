@@ -1,16 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
-import { ElMessage } from "element-plus";
 import { detectTextFormat } from "../features/text-formatter/formatters/registry";
 import type { TextFormat, TextFormatterInput } from "../features/text-formatter/types";
 import type { ClipboardHistoryEntry } from "../types/settings";
 
-export function useTextFormatterLauncher() {
+export function useTextFormatterLauncher(reportError: (error: unknown, card: ClipboardHistoryEntry) => void) {
   function openTextFormatter(card: ClipboardHistoryEntry) {
-    void launchTextFormatter(card).catch(reportLauncherError);
+    void launchTextFormatter(card).catch((error) => reportError(error, card));
   }
 
   function openTextFormatterWithFormat(card: ClipboardHistoryEntry, format: TextFormat) {
-    void launchTextFormatter(card, format).catch(reportLauncherError);
+    void launchTextFormatter(card, format).catch((error) => reportError(error, card));
   }
 
   return { openTextFormatter, openTextFormatterWithFormat };
@@ -30,9 +29,4 @@ async function launchTextFormatter(card: ClipboardHistoryEntry, requestedFormat?
     updatedAt: card.updatedAt,
   };
   await invoke("show_text_formatter", { input });
-}
-
-function reportLauncherError(error: unknown) {
-  console.error("Failed to open text formatter", error);
-  ElMessage.error(error instanceof Error ? error.message : String(error));
 }

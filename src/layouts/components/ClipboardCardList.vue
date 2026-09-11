@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, shallowRef, useTemplateRef } from "vue";
 import PasteCard from "./PasteCard/index.vue";
+import type { PanelNoticeState } from "../composables/usePanelNotice";
+import type { DiffSide } from "../features/text-diff/types";
 import type { ClipboardHistoryEntry } from "../types/settings";
 import { MAX_QUICK_SELECT_CARDS } from "../composables/usePasteFlowKeyboard";
-import { CARD_LIST_PADDING, cardWidthForViewport, horizontalCardLayout, scrollOffsetForCard } from "../utils/horizontalCardLayout";
+import {
+  CARD_LIST_BLEED,
+  CARD_LIST_PADDING,
+  cardWidthForViewport,
+  horizontalCardLayout,
+  scrollOffsetForCard,
+} from "../utils/horizontalCardLayout";
 
 const props = defineProps<{
   cards: readonly ClipboardHistoryEntry[];
   selectedCardId?: number;
-  diffCardId?: number;
+  diffLeftCardId?: number;
+  notice?: PanelNoticeState;
 }>();
 const emit = defineEmits<{
   select: [id: number];
@@ -69,6 +78,12 @@ function scrollToCard(id: number) {
   element.value.scrollTo({ left, behavior: "smooth" });
 }
 
+function diffSideForCard(card: ClipboardHistoryEntry): DiffSide | undefined {
+  if (props.diffLeftCardId === card.id) return "left";
+  if (props.diffLeftCardId === undefined || props.selectedCardId !== card.id) return undefined;
+  return card.format === "image" ? undefined : "right";
+}
+
 onMounted(() => {
   resizeObserver = new ResizeObserver(updateViewport);
   resizeObserver.observe(element.value!);
@@ -84,7 +99,13 @@ defineExpose({ element, scrollToCard });
 </script>
 
 <template>
-  <div ref="element" class="card-container" :style="{ padding: `${CARD_LIST_PADDING}px` }" @scroll="handleScroll" @wheel="handleWheel">
+  <div
+    ref="element"
+    class="card-container"
+    :style="{ margin: `-${CARD_LIST_BLEED}px`, padding: `${CARD_LIST_PADDING}px` }"
+    @scroll="handleScroll"
+    @wheel="handleWheel"
+  >
     <div class="card-track" :style="{ width: `${layout.width}px` }">
       <PasteCard
         v-for="{ card, index } in renderedCards"
@@ -96,7 +117,8 @@ defineExpose({ element, scrollToCard });
         :format="card.format"
         :file-paths="card.filePaths"
         :is-selected="props.selectedCardId === card.id"
-        :is-diff-source="props.diffCardId === card.id"
+        :diff-side="diffSideForCard(card)"
+        :notice="props.notice?.cardId === card.id ? props.notice : undefined"
         :quick-key="index < MAX_QUICK_SELECT_CARDS ? index + 1 : undefined"
         @select="emit('select', card.id)"
         @cancel-diff="emit('cancelDiff')"

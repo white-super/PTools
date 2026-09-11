@@ -54,18 +54,19 @@ PTools is a utility built around copy and paste. It keeps copied text, images, a
 3. Right-click a text card and open “Use Tool” to view and select all text tools.
 4. JSON supports formatting, folding, comment removal, minified or escaped copies, and XML/TypeScript conversion. URL, Base64, and date entries expose their corresponding conversion actions.
 5. All formatting tools support shortcuts: use `Ctrl + R` for regular formatting; JSON comment removal, minifying, escaping, and conversions use `Ctrl + Q/W/A/S/T`; URL, Base64, and date conversions use `Ctrl + E/D`.
-6. The toolbar includes an auto-wrap toggle enabled by default. When text is selected, formatting and encoding/decoding apply only to the selection; otherwise they apply to the full content.
+6. The toolbar includes an auto-wrap toggle enabled by default; press `Ctrl + B` to switch it quickly. When text is selected, formatting and encoding/decoding apply only to the selection; otherwise they apply to the full content.
 7. Press `Command + D` or `Alt + D` to pin or unpin the window. Pinned windows stay visible when unfocused, and multiple formatter windows can be open at the same time.
 
 ## Text Comparison (1.4.0 Development Build)
 
 1. Select a text or text-file card and press `D` to mark the left source. Select another card and press `D` to open a side-by-side comparison. The context menu provides the same actions.
-2. A Diff icon appears in the card's fixed-height header without resizing the card. Press `D` on the marked card again or click the icon to clear it. The snapshot survives search, filters, pagination, and panel hiding, and clears after opening a comparison or exiting the app. Multi-file cards prompt you to select one file.
-3. Raw comparison is the default. Enable formatted comparison for JSON/JSONC, XML, or HTML, with automatic or manual type selection and support for escaped JSON. XML/HTML retain meaningful whitespace; formatted equality does not imply byte-identical source files.
-4. Includes inline highlights, synchronized scrolling, difference navigation, swapping sides, line wrapping, and collapsing unchanged regions. Use `Ctrl + Q/E` for previous/next difference and `Ctrl + R` to recompute.
-5. Edit either side directly with live difference highlighting and undo/redo. Typing does not reformat your text; press `Ctrl + R` to reformat when formatted comparison is enabled. Each side supports importing UTF-8 text files (including UTF-8 BOM), restoring the source, and copying displayed content. Images, binary files, and directories are unsupported. Edits affect temporary copies only; files and history entries are never overwritten automatically.
-6. Multiple independent windows follow the app theme and remain open when unfocused. Use `Command + D` / `Alt + D` to toggle always-on-top. The global clipboard shortcut remains available. Closing an edited draft requires confirmation.
-7. Full formatting and comparison run in a cancellable background worker on your device. Direct edits use local incremental comparison to preserve the caret and undo history. Content is not uploaded.
+2. The left source shows `Diff-L`, while the currently selected right candidate shows `DIFF-R`. Both markers sit near the right side of the fixed-height card header without resizing the card. Press `D` again or click a marker to clear it; closing the clipboard panel clears all markers. Multi-file cards prompt you to select one file.
+3. Click “Text Compare” in the clipboard panel's upper-right corner to open a comparison with both sides empty for manual pasting. Windows opened from this entry are pinned by default.
+4. Raw comparison is the default. Enable formatted comparison for JSON/JSONC, XML, or HTML, with automatic or manual type selection and support for escaped JSON. XML/HTML retain meaningful whitespace; formatted equality does not imply byte-identical source files.
+5. Includes inline highlights, synchronized scrolling, difference navigation, swapping sides, line wrapping, and collapsing unchanged regions. Use `Ctrl + Q/E` for previous/next difference, `Ctrl + R` to recompute, and `Ctrl + B` to toggle line wrapping.
+6. Edit either side directly with live difference highlighting and undo/redo. Typing does not reformat your text; press `Ctrl + R` to reformat when formatted comparison is enabled. Each side supports importing UTF-8 text files (including UTF-8 BOM), restoring the source, and copying displayed content. Images, binary files, and directories are unsupported. Edits affect temporary copies only; files and history entries are never overwritten automatically.
+7. Multiple independent windows follow the app theme and remain open when unfocused. Use `Command + D` / `Alt + D` to toggle always-on-top. Press `Esc` to close an unpinned window; pinned windows ignore `Esc`. The global clipboard shortcut remains available. Closing an edited draft requires confirmation.
+8. Full formatting and comparison run in a cancellable background worker on your device. Direct edits use local incremental comparison to preserve the caret and undo history. Content is not uploaded.
 
 ## TODO
 

@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, EventTarget, Manager};
 
 use crate::{platform, system_permissions};
 
@@ -6,6 +6,13 @@ type CmdResult<T = ()> = Result<T, String>;
 
 pub(crate) fn hide_main_panel_now(app_handle: &AppHandle) -> CmdResult {
     crate::core::help_window::hide(app_handle)?;
+    if let Err(error) = app_handle.emit_to(
+        EventTarget::labeled(platform::MAIN_PANEL_LABEL),
+        platform::MAIN_PANEL_DISMISS_EVENT,
+        true,
+    ) {
+        eprintln!("failed to notify the main panel before hiding: {error}");
+    }
     let window = app_handle
         .get_webview_window("main")
         .ok_or_else(|| "failed to find main window".to_owned())?;

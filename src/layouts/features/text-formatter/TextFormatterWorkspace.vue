@@ -27,6 +27,7 @@ const {
   windowId: props.windowId,
   getSelectedText: () => editor.value?.getSelectedText(),
   replaceSelectedText: (value) => editor.value?.replaceSelectedText(value) ?? false,
+  toggleLineWrapping,
 });
 
 function handleToolbarAction(action: FormatterToolbarAction) {

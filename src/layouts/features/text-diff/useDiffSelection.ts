@@ -5,7 +5,7 @@ import type { DiffInput, DiffSource } from "./types";
 interface Options {
   readonly resolve: (card: ClipboardHistoryEntry) => Promise<DiffSource | undefined>;
   readonly launch: (input: DiffInput) => Promise<unknown>;
-  readonly reportError: (error: unknown) => void;
+  readonly reportError: (error: unknown, card: ClipboardHistoryEntry) => void;
 }
 
 export function useDiffSelection(options: Options) {
@@ -14,6 +14,7 @@ export function useDiffSelection(options: Options) {
   let revision = 0;
 
   function cancel() {
+    if (!pending.value && !busy.value) return;
     revision++;
     pending.value = undefined;
     busy.value = false;
@@ -38,7 +39,7 @@ export function useDiffSelection(options: Options) {
       await options.launch({ left: left.source, right: source });
       if (revision === currentRevision) pending.value = undefined;
     } catch (error) {
-      if (revision === currentRevision) options.reportError(error);
+      if (revision === currentRevision) options.reportError(error, card);
     } finally {
       if (revision === currentRevision) busy.value = false;
     }

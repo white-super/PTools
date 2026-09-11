@@ -1,11 +1,15 @@
 import { h } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessageBox } from "element-plus";
 import type { ClipboardHistoryEntry } from "../types/settings";
-import type { DiffSource } from "../features/text-diff/types";
+import type { DiffInput, DiffSource } from "../features/text-diff/types";
 import { useDiffSelection } from "../features/text-diff/useDiffSelection";
 
 const SOURCE_PREVIEW_LENGTH = 40;
+const EMPTY_DIFF_INPUT: DiffInput = {
+  left: { name: "左侧内容", content: "" },
+  right: { name: "右侧内容", content: "" },
+};
 
 async function chooseFile(paths: readonly string[]) {
   if (paths.length === 1) return paths[0];
@@ -43,19 +47,29 @@ async function resolveSource(card: ClipboardHistoryEntry): Promise<DiffSource | 
       content: card.content,
     };
   }
-  if (card.format !== "file" || card.filePaths.length === 0)
-    throw new Error("请选择文本或文本文件卡片，图片无法进行文本对比");
+  if (card.format === "image")
+    throw new Error("图片卡片不支持文本对比");
+  if (card.filePaths.length === 0) throw new Error("文件卡片没有可读取的文件路径");
   const path = await chooseFile(card.filePaths);
   return path === undefined ? undefined : invoke<DiffSource>("read_diff_file", { path });
 }
 
-export function useTextDiffLauncher() {
-  return useDiffSelection({
+export function useTextDiffLauncher(
+  reportError: (error: unknown, card?: ClipboardHistoryEntry) => void,
+) {
+  const selection = useDiffSelection({
     resolve: resolveSource,
-    launch: (input) => invoke("show_text_diff", { input }),
-    reportError: (error) => {
-      console.error("Failed to select diff source", error);
-      ElMessage.error(error instanceof Error ? error.message : String(error));
-    },
+    launch: (input) => invoke("show_text_diff", { input, pinned: false }),
+    reportError,
   });
+
+  async function openEmptyTextDiff() {
+    try {
+      await invoke("show_text_diff", { input: EMPTY_DIFF_INPUT, pinned: true });
+    } catch (error) {
+      reportError(error);
+    }
+  }
+
+  return { ...selection, openEmptyTextDiff };
 }

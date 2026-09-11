@@ -36,12 +36,17 @@ pub struct DiffState {
 }
 
 impl DiffState {
-    pub fn insert(&self, input: DiffInput) -> Result<String, String> {
+    pub fn insert(&self, input: DiffInput, pinned: bool) -> Result<String, String> {
         let label = format!("{PREFIX}{}", self.next_id.fetch_add(1, Ordering::Relaxed));
-        self.inputs
+        let mut inputs = self
+            .inputs
             .write()
-            .map_err(|e| e.to_string())?
-            .insert(label.clone(), input);
+            .map_err(|e| e.to_string())?;
+        let mut pinned_windows = self.pinned.write().map_err(|e| e.to_string())?;
+        inputs.insert(label.clone(), input);
+        if pinned {
+            pinned_windows.insert(label.clone());
+        }
         Ok(label)
     }
 
@@ -111,10 +116,9 @@ mod tests {
     #[test]
     fn windows_keep_independent_snapshots_and_release_on_close() {
         let state = DiffState::default();
-        let first = state.insert(input("first")).unwrap();
-        let second = state.insert(input("second")).unwrap();
+        let first = state.insert(input("first"), true).unwrap();
+        let second = state.insert(input("second"), false).unwrap();
         assert_ne!(first, second);
-        state.set_pinned(&first, true).unwrap();
         assert!(state.is_pinned(&first).unwrap());
         assert!(!state.is_pinned(&second).unwrap());
         let mut returned = state.get(&first).unwrap();
@@ -128,9 +132,9 @@ mod tests {
     }
 }
 
-pub fn create(app: &AppHandle, input: DiffInput) -> Result<String, String> {
+pub fn create(app: &AppHandle, input: DiffInput, pinned: bool) -> Result<String, String> {
     let state = app.state::<DiffState>();
-    let label = state.insert(input)?;
+    let label = state.insert(input, pinned)?;
     if let Err(error) = build(app, &label) {
         if let Some(window) = app.get_webview_window(&label) {
             if let Err(cleanup) = window.destroy() {

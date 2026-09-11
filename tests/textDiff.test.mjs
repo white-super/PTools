@@ -5,7 +5,10 @@ import { diff, Change, Chunk } from "@codemirror/merge";
 import { Text } from "@codemirror/state";
 
 const root = new URL("../src/layouts/features/text-diff/", import.meta.url);
+const LONG_DESCRIPTION_LENGTH = 180;
+const LONG_SCRIPT_LENGTH = 260;
 const { prepareDiff, detectDiffFormat } = await import(await sourceUrl(new URL("diffFormat.ts", root)));
+const { computeDiffChanges } = await import(await sourceUrl(new URL("diffChanges.ts", root)));
 const { useDiffSelection } = await import(await sourceUrl(new URL("useDiffSelection.ts", root)));
 const { decodeTextFile } = await import(await sourceUrl(new URL("readTextFile.ts", root)));
 const request = (left, right, options = {}) => ({
@@ -91,7 +94,7 @@ test("serialized worker changes can be reconstructed into accurate merge chunks"
     ["a\r\nb", "a\nb"],
     ["你好 world", "你好 PTools"],
   ]) {
-    const changes = JSON.parse(JSON.stringify(diff(left, right, { scanLimit: Infinity }))).map(
+    const changes = JSON.parse(JSON.stringify(diff(left, right))).map(
       (c) => new Change(c.fromA, c.toA, c.fromB, c.toB),
     );
     const chunks = Chunk.build(Text.of(left.split("\n")), Text.of(right.split("\n")), {
@@ -99,6 +102,32 @@ test("serialized worker changes can be reconstructed into accurate merge chunks"
     });
     assert.ok(chunks.length > 0);
   }
+});
+
+test("structured comparison keeps unchanged lines between distant changes", () => {
+  const sharedBlock = [
+    '  "parameters": {',
+    '    "type": "object",',
+    '    "properties": {',
+    '      "question": { "type": "string" }',
+    '    },',
+    '    "method": "GET"',
+    '  },',
+  ].join("\n");
+  const document = (description, script) => [
+    "{",
+    `  "description":"${description}",`,
+    sharedBlock,
+    `  "responseParser":"${script}"`,
+    "}",
+  ].join("\n");
+  const left = document("左".repeat(LONG_DESCRIPTION_LENGTH), "A".repeat(LONG_SCRIPT_LENGTH));
+  const right = document("右".repeat(LONG_DESCRIPTION_LENGTH), "B".repeat(LONG_SCRIPT_LENGTH));
+  const changes = computeDiffChanges(left, right);
+  const sharedPosition = left.indexOf('"method": "GET"');
+
+  assert.equal(changes.length, 2);
+  assert.ok(changes.every(change => sharedPosition < change.fromA || sharedPosition >= change.toA));
 });
 
 test("file decoding supports UTF-8 BOM and rejects binary and other encodings", () => {
@@ -116,7 +145,7 @@ function selection(overrides = {}) {
     launch: async (input) => {
       launched.push(input);
     },
-    reportError: (error) => errors.push(error),
+    reportError: (error, card) => errors.push({ error, card }),
     ...overrides,
   });
   return { ...state, launched, errors };
@@ -147,6 +176,8 @@ test("same card cancels; failed launch retains source; cancelled selection is ig
   await state.select({ id: 2, content: "right" });
   assert.equal(state.pending.value.cardId, 1);
   assert.equal(state.errors.length, 1);
+  assert.equal(state.errors[0].card.id, 2);
+  assert.match(state.errors[0].error.message, /open failed/);
   let resolve;
   const pending = selection({
     resolve: () =>

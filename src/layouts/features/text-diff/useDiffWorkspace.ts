@@ -168,10 +168,14 @@ export function useDiffWorkspace() {
     }
   }
 
-  onMounted(async () => {
+  async function initialize() {
     try {
-      const input = await invoke<DiffInput>("get_text_diff_input");
+      const [input, initialPinned] = await Promise.all([
+        invoke<DiffInput>("get_text_diff_input"),
+        invoke<boolean>("get_text_diff_pinned"),
+      ]);
       if (disposed) return;
+      pinned.value = initialPinned;
       original.value = input;
       left.value = input.left;
       right.value = input.right;
@@ -184,6 +188,10 @@ export function useDiffWorkspace() {
     } catch (error) {
       if (!disposed) report(error);
     }
+  }
+
+  onMounted(() => {
+    void initialize();
   });
   onUnmounted(() => {
     disposed = true;

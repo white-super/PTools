@@ -4,6 +4,7 @@ import { onMounted, onUnmounted } from "vue";
 
 const ESCAPE_KEY = "Escape";
 const MAIN_PANEL_BLUR_EVENT = "ptools://main-panel-blur";
+const MAIN_PANEL_DISMISS_EVENT = "ptools://main-panel-dismiss";
 
 function reportDismissalError(error: unknown) {
   console.error("Failed to hide the main panel", error);
@@ -16,6 +17,7 @@ interface UsePanelDismissalOptions {
 export function usePanelDismissal(options: UsePanelDismissalOptions = {}) {
   let disposed = false;
   let unlistenBlur: UnlistenFn | undefined;
+  let unlistenDismiss: UnlistenFn | undefined;
 
   function dismissPanel() {
     options.beforeDismiss?.();
@@ -34,6 +36,15 @@ export function usePanelDismissal(options: UsePanelDismissalOptions = {}) {
 
   onMounted(() => {
     window.addEventListener("keydown", handleKeydown);
+    void listen(MAIN_PANEL_DISMISS_EVENT, () => options.beforeDismiss?.())
+      .then((unlisten) => {
+        if (disposed) {
+          unlisten();
+          return;
+        }
+        unlistenDismiss = unlisten;
+      })
+      .catch(reportDismissalError);
     void listen(MAIN_PANEL_BLUR_EVENT, () => dismissPanel())
       .then((unlisten) => {
         if (disposed) {
@@ -50,5 +61,6 @@ export function usePanelDismissal(options: UsePanelDismissalOptions = {}) {
     disposed = true;
     window.removeEventListener("keydown", handleKeydown);
     unlistenBlur?.();
+    unlistenDismiss?.();
   });
 }

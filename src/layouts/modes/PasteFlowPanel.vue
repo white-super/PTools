@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { computed, shallowRef, useTemplateRef } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessageBox } from "element-plus";
 import CardContextMenu from "../components/CardContextMenu.vue";
+import CardNotice from "../components/PasteCard/CardNotice.vue";
 import ClipboardFilterBar from "../components/ClipboardFilterBar.vue";
 import ClipboardSearchInput from "../components/ClipboardSearchInput.vue";
-import ClipboardMoreMenu from "../components/ClipboardMoreMenu.vue";
+import ClipboardToolbarActions from "../components/ClipboardToolbarActions.vue";
 import ClipboardCardList from "../components/ClipboardCardList.vue";
 import { useTextDiffLauncher } from "../composables/useTextDiffLauncher";
 import { DEFAULT_APP_THEME } from "../constants/appThemes";
 import { useClipboardHistory } from "../composables/useClipboardHistory";
 import { useClipboardHistoryQuery } from "../composables/useClipboardHistoryQuery";
 import { useCardContextMenu } from "../composables/useCardContextMenu";
+import { usePanelNotice } from "../composables/usePanelNotice";
 import { usePanelDismissal } from "../composables/usePanelDismissal";
 import { usePanelEmptyState } from "../composables/usePanelEmptyState";
 import { usePasteFlowKeyboard } from "../composables/usePasteFlowKeyboard";
@@ -20,7 +22,6 @@ import { useTextFormatterLauncher } from "../composables/useTextFormatterLaunche
 import type { TextFormat } from "../features/text-formatter/types";
 import type { ClipboardFilter, ClipboardHistoryEntry, ClipboardTagInput } from "../types/settings";
 const FORMAT_FILTERS: readonly ClipboardFilter[] = ["text", "image", "file"];
-
 const {
   cards,
   createTag,
@@ -36,8 +37,13 @@ const {
   tags,
   updateTag,
 } = useClipboardHistory();
-const { openTextFormatter, openTextFormatterWithFormat } = useTextFormatterLauncher();
-const { pending: diffPending, busy: diffBusy, select: selectDiff, cancel: cancelDiff } = useTextDiffLauncher();
+const { notice: panelNotice, reportError: reportPanelError, clearNotice } = usePanelNotice();
+const { openTextFormatter, openTextFormatterWithFormat } = useTextFormatterLauncher(
+  (error, card) => reportPanelError("open text formatter", error, card.id),
+);
+const { pending: diffPending, busy: diffBusy, select: selectDiff, cancel: cancelDiff, openEmptyTextDiff } = useTextDiffLauncher(
+  (error, card) => reportPanelError(card ? "select diff source" : "open empty text diff", error, card?.id),
+);
 const isPasting = shallowRef(false);
 const isMoreMenuOpen = shallowRef(false);
 const cardList = useTemplateRef<InstanceType<typeof ClipboardCardList>>("cardList");
@@ -72,11 +78,6 @@ const { description: emptyStateDescription, title: emptyStateTitle } = usePanelE
   activeFilter, isLoading, searchQuery, tags,
 });
 const { closeCardContextMenu, contextMenu, openCardContextMenu } = useCardContextMenu({ tags });
-function reportPanelError(action: string, error: unknown) {
-  console.error(`Failed to ${action}`, error);
-  const message = error instanceof Error ? error.message : String(error);
-  ElMessage.error(message);
-}
 function closeMenus() {
   isMoreMenuOpen.value = false;
   closeCardContextMenu();
@@ -114,7 +115,7 @@ async function handleToggleCardTag(tagId: number) {
   try {
     await setCardTags(menu.cardId, assignedTagIds);
   } catch (error) {
-    reportPanelError("update clipboard tags", error);
+    reportPanelError("update clipboard tags", error, menu.cardId);
   }
 }
 
@@ -130,7 +131,7 @@ async function handleDeleteCard() {
       selectedCardId.value = undefined;
     }
   } catch (error) {
-    reportPanelError("delete clipboard history", error);
+    reportPanelError("delete clipboard history", error, menu.cardId);
   }
 }
 
@@ -194,7 +195,7 @@ async function handlePaste(card: ClipboardHistoryEntry) {
   try {
     await pasteCard(card);
   } catch (error) {
-    reportPanelError("paste selected card", error);
+    reportPanelError("paste selected card", error, card.id);
   } finally {
     isPasting.value = false;
   }
@@ -231,7 +232,7 @@ const { selectedCardId, selectCard } = usePasteFlowKeyboard({
   reportError: (error) => reportPanelError("listen for main panel focus", error),
 });
 
-usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = ""; } });
+usePanelDismissal({ beforeDismiss: () => { closeMenus(); cancelDiff(); clearNotice(); searchQuery.value = ""; } });
 </script>
 
 <template>
@@ -256,14 +257,15 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = "";
         class="panel-search"
         @submit="handleSearchSubmit"
       />
-      <ClipboardMoreMenu v-model="isMoreMenuOpen" @settings="openSettings" />
+      <ClipboardToolbarActions v-model="isMoreMenuOpen" @text-diff="cancelDiff(); openEmptyTextDiff()" @settings="openSettings" />
     </div>
     <ClipboardCardList
       v-if="visibleCards.length"
       ref="cardList"
       :cards="visibleCards"
       :selected-card-id="selectedCardId"
-      :diff-card-id="diffPending?.cardId"
+      :diff-left-card-id="diffPending?.cardId"
+      :notice="panelNotice"
       :aria-busy="diffBusy"
       @cancel-diff="cancelDiff"
       @select="selectCard"
@@ -275,6 +277,9 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = "";
       <p class="empty-state-title">{{ emptyStateTitle }}</p>
       <p class="empty-state-description">{{ emptyStateDescription }}</p>
     </div>
+    <div v-if="panelNotice && panelNotice.cardId === undefined" class="panel-notice-host">
+      <CardNotice :notice="panelNotice" />
+    </div>
     <CardContextMenu
       v-if="contextMenu"
       :x="contextMenu.x"
@@ -282,7 +287,7 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); searchQuery.value = "";
       :tags="tags"
       :assigned-tag-ids="contextMenu.assignedTagIds"
       :tools="contextMenu.tools"
-      :diff-label="diffPending?.cardId === contextMenu.cardId ? '取消对比标记' : diffPending ? '与标记内容对比' : '标记为对比源'"
+      :diff-label="diffPending?.cardId === contextMenu.cardId ? '取消文本对比' : diffPending ? '与已选内容对比' : '文本对比'"
       :diff-disabled="diffBusy || contextMenu.card.format === 'image'"
       @diff="selectDiff(contextMenu.card); closeCardContextMenu()"
       @toggle-tag="handleToggleCardTag"

@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import FormatterActionIcon from "./FormatterActionIcon.vue";
 import { formatterShortcutLabel } from "../formatterShortcuts";
+import { LINE_WRAPPING_SHORTCUT_LABEL } from "../../../utils/toolWindowShortcuts";
 import type { FormatterToolbarAction, TextTransformAction } from "../types";
 
 interface ToolbarOption {
@@ -71,7 +72,7 @@ function isTextTransformAction(action: FormatterToolbarAction): action is TextTr
         {{ option.shortcutLabel }}
       </kbd>
     </button>
-    <label class="toolbar-switch" title="切换自动换行">
+    <label class="toolbar-switch" :title="`切换自动换行 (${LINE_WRAPPING_SHORTCUT_LABEL})`">
       <input
         class="toolbar-switch-input"
         type="checkbox"
@@ -83,6 +84,7 @@ function isTextTransformAction(action: FormatterToolbarAction): action is TextTr
         <span class="toolbar-switch-thumb"></span>
       </span>
       <span class="toolbar-switch-label">自动换行</span>
+      <kbd class="toolbar-shortcut" aria-hidden="true">{{ LINE_WRAPPING_SHORTCUT_LABEL }}</kbd>
     </label>
     <span
       v-if="props.statusMessage" class="toolbar-status" role="status" aria-live="polite"

@@ -36,6 +36,7 @@ pub fn run() {
             cmds::paste_into_active_app,
             diff_commands::show_text_diff,
             diff_commands::get_text_diff_input,
+            diff_commands::get_text_diff_pinned,
             diff_commands::set_text_diff_pinned,
             diff_commands::close_text_diff,
             diff_commands::read_diff_file,

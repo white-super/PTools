@@ -4,6 +4,7 @@ import DiffToolbar from "./components/DiffToolbar.vue";
 import DiffSourceHeader from "./components/DiffSourceHeader.vue";
 import DiffMergeEditor from "./components/DiffMergeEditor.vue";
 import { useDiffWorkspace } from "./useDiffWorkspace";
+import { isLineWrappingShortcut } from "../../utils/toolWindowShortcuts";
 
 const {
   result, busy, error, original, left, right, format, formatted, edit, hasLiveEdits,
@@ -20,6 +21,13 @@ function navigate(direction: -1 | 1) { editor.value?.navigate(direction); }
 function handleKeydown(event: KeyboardEvent) {
   if (event.isComposing || event.repeat || event.defaultPrevented) return;
   if (event.target instanceof Element && event.target.closest(".el-overlay")) return;
+  if (event.key === "Escape") {
+    if (!pinned.value) { event.preventDefault(); void close(); }
+    return;
+  }
+  if (isLineWrappingShortcut(event)) {
+    event.preventDefault(); wrapping.value = !wrapping.value; return;
+  }
   const key = event.key.toLowerCase();
   if (key === "d" && !event.ctrlKey && !event.shiftKey && event.metaKey !== event.altKey) {
     event.preventDefault(); void togglePinned(); return;

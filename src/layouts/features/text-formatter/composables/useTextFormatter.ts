@@ -4,12 +4,14 @@ import { computed, onMounted, onUnmounted, shallowRef } from "vue";
 import { writeText } from "tauri-plugin-clipboard-api";
 import { formatterActionFromKeyboard } from "../formatterShortcuts";
 import { getTextFormatter } from "../formatters/registry";
+import { isLineWrappingShortcut } from "../../../utils/toolWindowShortcuts";
 import type { TextFormatterInput, TextTransformAction } from "../types";
 
 interface UseTextFormatterOptions {
   readonly windowId: string;
   readonly getSelectedText?: () => string | undefined;
   readonly replaceSelectedText?: (value: string) => boolean;
+  readonly toggleLineWrapping: () => void;
 }
 
 const STATUS_VISIBLE_DURATION_MS = 1800;
@@ -94,6 +96,11 @@ export function useTextFormatter(options: UseTextFormatterOptions) {
     if (event.key === "Escape") {
       event.preventDefault();
       close();
+      return;
+    }
+    if (isLineWrappingShortcut(event)) {
+      event.preventDefault();
+      options.toggleLineWrapping();
       return;
     }
     const transformAction = formatterActionFromKeyboard(event, input.value?.format);

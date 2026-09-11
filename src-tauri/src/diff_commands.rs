@@ -10,11 +10,12 @@ pub async fn show_text_diff(
     app_handle: AppHandle,
     window: WebviewWindow,
     input: DiffInput,
+    pinned: bool,
 ) -> Result<String, String> {
     require_main_window(&window)?;
     window_task::run(app_handle, move |app| {
         crate::cmds::hide_main_panel_now(app)?;
-        let result = diff_window::create(app, input);
+        let result = diff_window::create(app, input, pinned);
         if result.is_err() {
             let panel = app.get_webview_window("main").ok_or("剪贴板面板不存在")?;
             let cursor = app.cursor_position().map_err(|e| e.to_string())?;
@@ -28,6 +29,12 @@ pub async fn show_text_diff(
 #[tauri::command]
 pub fn get_text_diff_input(window: WebviewWindow) -> Result<DiffInput, String> {
     window.state::<DiffState>().get(window.label())
+}
+
+#[tauri::command]
+pub fn get_text_diff_pinned(window: WebviewWindow) -> Result<bool, String> {
+    require_diff_window(&window)?;
+    window.state::<DiffState>().is_pinned(window.label())
 }
 
 #[tauri::command]

@@ -2,7 +2,9 @@ const MIN_CARD_WIDTH = 190;
 const MAX_CARD_WIDTH = 240;
 const CARD_VIEWPORT_RATIO = 0.18;
 export const CARD_GAP = 12;
-export const CARD_LIST_PADDING = 2;
+const CARD_LIST_VISIBLE_INSET = 2;
+export const CARD_LIST_PADDING = 12;
+export const CARD_LIST_BLEED = CARD_LIST_PADDING - CARD_LIST_VISIBLE_INSET;
 const OVERSCAN_CARD_COUNT = 4;
 
 export function cardWidthForViewport(width: number) {

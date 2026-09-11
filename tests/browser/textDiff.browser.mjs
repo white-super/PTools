@@ -32,6 +32,7 @@ export async function runTextDiffBrowserChecks() {
     invoke: async (command, args) => {
       calls.push({ command, args });
       if (command === "get_text_diff_input") return structuredClone(originalInput);
+      if (command === "get_text_diff_pinned") return false;
       if (command === "plugin:event|listen") return 1;
       if (["plugin:event|unlisten", "set_text_diff_pinned", "close_text_diff", "plugin:clipboard|write_text"].includes(command)) return;
       throw new Error(`Unexpected native call: ${command}`);
@@ -53,6 +54,8 @@ export async function runTextDiffBrowserChecks() {
       row.every((rect) => Math.abs(rect.y + rect.height / 2 - row[0].y - row[0].height / 2) < 2),
       "toolbar wraps",
     );
+    host.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true }));
+    await waitFor(() => calls.some((call) => call.command === "close_text_diff"), "Escape did not close an unpinned diff window");
 
     toolbar.querySelector('input[type="checkbox"]').click();
     await waitFor(() => host.querySelector("footer").textContent.includes("格式化后相同"), "formatted JSON should be equal");
@@ -64,6 +67,13 @@ export async function runTextDiffBrowserChecks() {
     more.querySelector("input").click();
     await nextTick();
     assert(host.querySelectorAll(".cm-lineWrapping").length === 2, "wrapping did not switch on");
+    assert(more.textContent.includes("Ctrl+B"), "wrapping shortcut is not shown");
+    host.dispatchEvent(new KeyboardEvent("keydown", { key: "b", code: "KeyB", ctrlKey: true, bubbles: true }));
+    await nextTick();
+    assert(!host.querySelector(".cm-lineWrapping"), "Ctrl+B did not switch wrapping off");
+    host.dispatchEvent(new KeyboardEvent("keydown", { key: "b", code: "KeyB", ctrlKey: true, bubbles: true }));
+    await nextTick();
+    assert(host.querySelectorAll(".cm-lineWrapping").length === 2, "Ctrl+B did not switch wrapping on");
 
     const changed = await checkLiveEditing(host, calls);
     await waitFor(() => host.querySelector(".cm-changedText"), "edited draft changes missing");
@@ -75,6 +85,13 @@ export async function runTextDiffBrowserChecks() {
     assert(
       calls.some((call) => call.command === "set_text_diff_pinned" && call.args.pinned),
       "pin shortcut failed",
+    );
+    const closeCallsWhilePinned = calls.filter((call) => call.command === "close_text_diff").length;
+    host.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true }));
+    await nextTick();
+    assert(
+      calls.filter((call) => call.command === "close_text_diff").length === closeCallsWhilePinned,
+      "Escape closed a pinned diff window",
     );
     host.querySelector('[aria-label="右侧复制内容"]').click();
     await waitFor(() => calls.some((call) => call.command === "plugin:clipboard|write_text"), "copy failed");

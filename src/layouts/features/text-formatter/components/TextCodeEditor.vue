@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { HighlightStyle, foldAll, syntaxHighlighting, unfoldAll } from "@codemirror/language";
+import { search } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
 import { basicSetup, EditorView } from "codemirror";
 import { onMounted, onUnmounted, shallowRef, useTemplateRef, watch } from "vue";
@@ -62,6 +63,7 @@ function createEditor(parent: HTMLElement) {
     doc: content.value,
     extensions: [
       basicSetup,
+      search({ top: true }),
       ...(props.lineWrapping ? [EditorView.lineWrapping] : []),
       ...(props.editorLanguage === "json" ? [json()] : []),
       editorTheme,

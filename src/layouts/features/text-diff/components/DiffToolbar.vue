@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DiffFormatChoice } from "../types";
+import { LINE_WRAPPING_SHORTCUT_LABEL } from "../../../utils/toolWindowShortcuts";
 
 const format = defineModel<DiffFormatChoice>("format", { required: true });
 const formatted = defineModel<boolean>("formatted", { required: true });
@@ -25,7 +26,9 @@ const emit = defineEmits<{ compare: []; navigate: [direction: -1 | 1]; swap: [] 
     <details class="more">
       <summary aria-label="更多对比选项" title="更多选项">•••</summary>
       <div class="more-menu">
-        <label class="switch"><input v-model="wrapping" type="checkbox" role="switch" /><span class="track"></span>自动换行</label>
+        <label class="switch" :title="`切换自动换行 (${LINE_WRAPPING_SHORTCUT_LABEL})`">
+          <input v-model="wrapping" type="checkbox" role="switch" /><span class="track"></span>自动换行 <kbd>{{ LINE_WRAPPING_SHORTCUT_LABEL }}</kbd>
+        </label>
         <label class="switch"><input v-model="collapse" type="checkbox" role="switch" /><span class="track"></span>折叠相同区域</label>
         <small>左右同步滚动<br />本地计算，不上传内容</small>
       </div>
