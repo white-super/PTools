@@ -1,6 +1,6 @@
 use super::{
-    apply_main_panel_layout, MainPanelState, PasteTargetState, MAIN_PANEL_BLUR_EVENT,
-    MAIN_PANEL_LABEL, WINDOW_MOVED_EVENT, WINDOW_RESIZED_EVENT,
+    apply_main_panel_layout, MainPanelState, PasteTargetState, MAIN_PANEL_LABEL, WINDOW_MOVED_EVENT,
+    WINDOW_RESIZED_EVENT,
 };
 use core_foundation::{
     base::TCFType,
@@ -86,6 +86,7 @@ pub(crate) fn initialize_main_panel(app: &mut App, window: WebviewWindow) -> Res
         NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
             | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary,
     );
+    let monitor_window = window.clone();
     let delegate = panel_delegate!(MyPanelDelegate {
         window_did_resign_key
     });
@@ -102,7 +103,9 @@ pub(crate) fn initialize_main_panel(app: &mut App, window: WebviewWindow) -> Res
             "window_did_resign_key" => {
                 let panel_state = app_handle.state::<MainPanelState>();
                 if !panel_state.take_blur_suppression() {
-                    let _ = window.emit_to(target, MAIN_PANEL_BLUR_EVENT, true);
+                    if let Err(error) = crate::cmds::hide_main_panel_now(&app_handle) {
+                        eprintln!("failed to dismiss the main panel after losing key status: {error}");
+                    }
                 }
             }
             "window_did_resize" => {
@@ -116,6 +119,12 @@ pub(crate) fn initialize_main_panel(app: &mut App, window: WebviewWindow) -> Res
         }
     }));
     panel.set_delegate(delegate);
+    if let Err(error) = super::macos_event_monitor::install_mouse_dismiss_monitors(
+        app.handle(),
+        &monitor_window,
+    ) {
+        eprintln!("failed to install macOS outside-click monitors: {error}");
+    }
     Ok(())
 }
 

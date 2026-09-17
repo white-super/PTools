@@ -125,7 +125,12 @@ impl Handle {
                 if event.state().eq(&ShortcutState::Pressed) {
                     match Self::should_ignore_main_shortcut(app_handle) {
                         Ok(true) => (),
-                        Ok(false) => cmds::toggle_window(app_handle.clone()),
+                        Ok(false) => {
+                            let app_handle = app_handle.clone();
+                            tauri::async_runtime::spawn(async move {
+                                cmds::toggle_window(app_handle);
+                            });
+                        }
                         Err(error) => {
                             eprintln!("failed to check settings window before shortcut: {error}")
                         }

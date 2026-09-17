@@ -145,6 +145,7 @@ export async function runDiffKeyboardChecks() {
     invoke: async () => 1,
   };
   const seen = [];
+  const quickSeen = [];
   const cards = shallowRef([
     { id: 1, content: "one" },
     { id: 2, content: "two" },
@@ -155,6 +156,7 @@ export async function runDiffKeyboardChecks() {
   const app = createApp({
     setup() {
       keyboard = usePasteFlowKeyboard({
+        selectedCardId: shallowRef(),
         cards,
         getCardContainer: () => null,
         scrollToCard: () => {},
@@ -168,6 +170,11 @@ export async function runDiffKeyboardChecks() {
         },
         closeMenus: () => {},
         focusSearch: () => {},
+        quickTools: {
+          toolIds: shallowRef(["json"]),
+          shortcuts: shallowRef(["Command+1", "Command+2", "Command+3", "Command+4", "Command+5"]),
+          execute: (toolId) => quickSeen.push(toolId),
+        },
         formatCard: () => {},
         pasteCard: () => {},
         diffCard: (card) => seen.push(card.id),
@@ -196,13 +203,15 @@ export async function runDiffKeyboardChecks() {
   send(host, { repeat: true });
   send(host, { ctrlKey: true });
   assert(keyboard.selectedCardId.value === 2, "Ctrl+D card navigation regressed");
+  send(host, { key: "1", code: "Digit1", metaKey: true });
+  assert(JSON.stringify(quickSeen) === '["json"]', "Command+1 did not execute the first quick tool");
   send(host);
   assert(JSON.stringify(seen) === "[1,2]", "D intercepts input, modifiers, repeat, or IME");
   app.unmount();
   host.remove();
   await nextTick();
   window.__TAURI_INTERNALS__ = previous;
-  return { seen, passed: true };
+  return { seen, quickSeen, passed: true };
 }
 
 export async function runDiffWorkerChecks() {

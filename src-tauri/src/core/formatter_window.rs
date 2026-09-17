@@ -23,7 +23,7 @@ const WINDOWS_OPENING_GRACE_PERIOD: Duration = Duration::from_millis(500);
 #[cfg(target_os = "windows")]
 const WINDOWS_MOVE_GRACE_PERIOD: Duration = Duration::from_millis(500);
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TextFormat {
     Json,
@@ -75,6 +75,17 @@ impl TextFormatterState {
             .read()
             .map(|inputs| inputs.get(label).cloned())
             .map_err(|_| "failed to read text formatter input".to_owned())
+    }
+
+    pub fn active_formats(&self) -> Result<Vec<TextFormat>, String> {
+        let inputs = self
+            .inputs
+            .read()
+            .map_err(|_| "failed to read active text formatter inputs".to_owned())?;
+        let formats = inputs.values().map(|input| input.format).collect::<HashSet<_>>();
+        let mut formats = formats.into_iter().collect::<Vec<_>>();
+        formats.sort();
+        Ok(formats)
     }
 
     pub fn is_pinned(&self, label: &str) -> Result<bool, String> {

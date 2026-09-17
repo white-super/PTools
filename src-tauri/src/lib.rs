@@ -15,6 +15,7 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .manage(platform::PasteTargetState::default())
         .manage(platform::MainPanelState::default())
+        .manage(core::main_panel_shortcuts::MainPanelShortcutState::default())
         .enable_macos_default_menu(false);
     let builder = builder
         .setup(|app| {
@@ -49,6 +50,8 @@ pub fn run() {
             help_commands::hide_shortcut_help,
             settings_commands::get_app_settings,
             settings_commands::update_app_settings,
+            settings_commands::update_quick_tools,
+            settings_commands::get_active_quick_tools,
             settings_commands::reset_app_settings,
             settings_commands::get_clipboard_history,
             settings_commands::record_clipboard_history,

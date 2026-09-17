@@ -17,6 +17,8 @@ function settingsSignature(settings: AppSettings) {
     settings.nextFilterShortcut,
     settings.previousCardShortcut,
     settings.nextCardShortcut,
+    settings.quickToolIds.join(","),
+    settings.quickToolShortcuts.join(","),
     settings.showFormatFilters,
     settings.historyRetentionDays,
     settings.maxHistoryEntries,

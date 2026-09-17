@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, shallowRef, useTemplateRef } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { ElMessageBox } from "element-plus";
 import CardContextMenu from "../components/CardContextMenu.vue";
 import CardNotice from "../components/PasteCard/CardNotice.vue";
 import ClipboardFilterBar from "../components/ClipboardFilterBar.vue";
@@ -12,6 +11,7 @@ import { useTextDiffLauncher } from "../composables/useTextDiffLauncher";
 import { DEFAULT_APP_THEME } from "../constants/appThemes";
 import { useClipboardHistory } from "../composables/useClipboardHistory";
 import { useClipboardHistoryQuery } from "../composables/useClipboardHistoryQuery";
+import { useClipboardTagActions } from "../composables/useClipboardTagActions";
 import { useCardContextMenu } from "../composables/useCardContextMenu";
 import { usePanelNotice } from "../composables/usePanelNotice";
 import { usePanelDismissal } from "../composables/usePanelDismissal";
@@ -19,8 +19,9 @@ import { usePanelEmptyState } from "../composables/usePanelEmptyState";
 import { usePasteFlowKeyboard } from "../composables/usePasteFlowKeyboard";
 import { useShortcutHelpPanel } from "../composables/useShortcutHelpPanel";
 import { useTextFormatterLauncher } from "../composables/useTextFormatterLauncher";
+import { useQuickTools } from "../features/quick-tools/useQuickTools";
 import type { TextFormat } from "../features/text-formatter/types";
-import type { ClipboardFilter, ClipboardHistoryEntry, ClipboardTagInput } from "../types/settings";
+import type { ClipboardFilter, ClipboardHistoryEntry } from "../types/settings";
 const FORMAT_FILTERS: readonly ClipboardFilter[] = ["text", "image", "file"];
 const {
   cards,
@@ -35,6 +36,7 @@ const {
   setCardTags,
   settings,
   tags,
+  updateQuickToolIds,
   updateTag,
 } = useClipboardHistory();
 const { notice: panelNotice, reportError: reportPanelError, clearNotice } = usePanelNotice();
@@ -46,6 +48,8 @@ const { pending: diffPending, busy: diffBusy, select: selectDiff, cancel: cancel
 );
 const isPasting = shallowRef(false);
 const isMoreMenuOpen = shallowRef(false);
+const isToolManagerOpen = shallowRef(false);
+const selectedCardId = shallowRef<number>();
 const cardList = useTemplateRef<InstanceType<typeof ClipboardCardList>>("cardList");
 const filterBar = useTemplateRef<InstanceType<typeof ClipboardFilterBar>>("filterBar");
 const searchInput = useTemplateRef<InstanceType<typeof ClipboardSearchInput>>("searchInput");
@@ -77,9 +81,18 @@ const availableFilters = computed<readonly ClipboardFilter[]>(() => [
 const { description: emptyStateDescription, title: emptyStateTitle } = usePanelEmptyState({
   activeFilter, isLoading, searchQuery, tags,
 });
+const {
+  createTag: handleCreateTag,
+  deleteTag: handleDeleteTag,
+  updateTag: handleUpdateTag,
+} = useClipboardTagActions({
+  activeFilter, tags, createTag, deleteTag, updateTag,
+  reportError: (action, error) => reportPanelError(action, error),
+});
 const { closeCardContextMenu, contextMenu, openCardContextMenu } = useCardContextMenu({ tags });
 function closeMenus() {
   isMoreMenuOpen.value = false;
+  isToolManagerOpen.value = false;
   closeCardContextMenu();
   filterBar.value?.closeMenus();
 }
@@ -143,50 +156,6 @@ function handleUseCardTool(format: TextFormat) {
   }
 }
 
-async function handleCreateTag(input: ClipboardTagInput) {
-  try {
-    await createTag(input);
-  } catch (error) {
-    reportPanelError("create clipboard tag", error);
-  }
-}
-
-async function handleUpdateTag(id: number, input: ClipboardTagInput) {
-  try {
-    await updateTag(id, input);
-  } catch (error) {
-    reportPanelError("update clipboard tag", error);
-  }
-}
-
-async function handleDeleteTag(id: number) {
-  const tag = tags.value.find((entry) => entry.id === id);
-  if (!tag) {
-    return;
-  }
-  try {
-    await ElMessageBox.confirm(
-      `删除“${tag.name}”后，所有卡片上的该标签关联都会被移除，且无法恢复。`,
-      "确认删除标签",
-      {
-        type: "warning",
-        confirmButtonText: "删除",
-        cancelButtonText: "取消",
-      },
-    );
-  } catch {
-    return;
-  }
-  try {
-    await deleteTag(id);
-    if (activeFilter.value === id) {
-      activeFilter.value = "all";
-    }
-  } catch (error) {
-    reportPanelError("delete clipboard tag", error);
-  }
-}
-
 async function handlePaste(card: ClipboardHistoryEntry) {
   if (isPasting.value) {
     return;
@@ -214,7 +183,26 @@ async function handleSearchSubmit() {
   }
 }
 
-const { selectedCardId, selectCard } = usePasteFlowKeyboard({
+const {
+  activeToolIds,
+  executeTool,
+  isSaving: isSavingToolOrder,
+  saveToolOrder,
+  toolIds,
+  toolShortcuts,
+} = useQuickTools({
+  cards: visibleCards,
+  selectedCardId,
+  settings,
+  saveToolIds: updateQuickToolIds,
+  closeMenus,
+  openTextDiff: () => { cancelDiff(); void openEmptyTextDiff(); },
+  openTextFormatter: openTextFormatterWithFormat,
+  reportError: (error, cardId) => reportPanelError("operate quick tools", error, cardId),
+});
+
+const { selectCard } = usePasteFlowKeyboard({
+  selectedCardId,
   cards: visibleCards,
   cardNavigation: { shortcutSettings: settings },
   getCardContainer: () => cardList.value?.element ?? null,
@@ -226,6 +214,7 @@ const { selectedCardId, selectCard } = usePasteFlowKeyboard({
     shortcutSettings: settings,
   },
   focusSearch: () => searchInput.value?.focus(),
+  quickTools: { toolIds, shortcuts: toolShortcuts, execute: executeTool },
   formatCard: openTextFormatter,
   diffCard: (card) => { void selectDiff(card); },
   pasteCard: (card) => void handlePaste(card),
@@ -257,7 +246,18 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); cancelDiff(); clearNoti
         class="panel-search"
         @submit="handleSearchSubmit"
       />
-      <ClipboardToolbarActions v-model="isMoreMenuOpen" @text-diff="cancelDiff(); openEmptyTextDiff()" @settings="openSettings" />
+      <ClipboardToolbarActions
+        v-model="isMoreMenuOpen"
+        v-model:tool-manager-open="isToolManagerOpen"
+        :tool-ids="toolIds"
+        :tool-shortcuts="toolShortcuts"
+        :active-tool-ids="activeToolIds"
+        :saving-tool-order="isSavingToolOrder"
+        @execute-tool="executeTool"
+        @tool-order-change="saveToolOrder"
+        @tool-error="reportPanelError('arrange quick tools', $event)"
+        @settings="openSettings"
+      />
     </div>
     <ClipboardCardList
       v-if="visibleCards.length"

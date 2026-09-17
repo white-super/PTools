@@ -1,3 +1,4 @@
+use super::settings_validation::validate_settings;
 use super::StorageResult;
 use crate::platform;
 use serde::{Deserialize, Serialize};
@@ -9,10 +10,18 @@ const DEFAULT_PREVIOUS_FILTER_SHORTCUT: &str = "Ctrl+Q";
 const DEFAULT_NEXT_FILTER_SHORTCUT: &str = "Ctrl+E";
 const DEFAULT_PREVIOUS_CARD_SHORTCUT: &str = "Ctrl+A";
 const DEFAULT_NEXT_CARD_SHORTCUT: &str = "Ctrl+D";
-const SEARCH_SHORTCUT: &str = "Command+F";
 const DEFAULT_HISTORY_RETENTION_DAYS: u32 = 30;
 const DEFAULT_MAX_HISTORY_ENTRIES: u32 = 200;
-const SUPPORTED_HISTORY_RETENTION_DAYS: [u32; 4] = [0, 7, 30, 90];
+pub(super) const MAX_QUICK_TOOLS: usize = 5;
+const DEFAULT_QUICK_TOOL_SHORTCUTS: [&str; MAX_QUICK_TOOLS] = [
+    "Command+1",
+    "Command+2",
+    "Command+3",
+    "Command+4",
+    "Command+5",
+];
+const LEGACY_QUICK_TOOL_SHORTCUTS: [&str; MAX_QUICK_TOOLS] =
+    ["Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5"];
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -21,6 +30,18 @@ pub enum AppTheme {
     SoftGlow,
     Classic,
     Dark,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum QuickToolId {
+    TextDiff,
+    Json,
+    Xml,
+    Html,
+    Url,
+    Base64,
+    Date,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -37,6 +58,10 @@ pub struct AppSettings {
     pub previous_card_shortcut: String,
     #[serde(default = "default_next_card_shortcut")]
     pub next_card_shortcut: String,
+    #[serde(default = "default_quick_tool_ids")]
+    pub quick_tool_ids: Vec<QuickToolId>,
+    #[serde(default = "default_quick_tool_shortcuts")]
+    pub quick_tool_shortcuts: Vec<String>,
     #[serde(default)]
     pub show_format_filters: bool,
     pub history_retention_days: u32,
@@ -56,6 +81,8 @@ impl Default for AppSettings {
             next_filter_shortcut: default_next_filter_shortcut(),
             previous_card_shortcut: default_previous_card_shortcut(),
             next_card_shortcut: default_next_card_shortcut(),
+            quick_tool_ids: default_quick_tool_ids(),
+            quick_tool_shortcuts: default_quick_tool_shortcuts(),
             show_format_filters: false,
             history_retention_days: DEFAULT_HISTORY_RETENTION_DAYS,
             max_history_entries: DEFAULT_MAX_HISTORY_ENTRIES,
@@ -69,47 +96,7 @@ impl Default for AppSettings {
 
 impl AppSettings {
     pub fn validate(&self) -> StorageResult {
-        let main_shortcut = self.main_shortcut.trim();
-        let previous_filter_shortcut = self.previous_filter_shortcut.trim();
-        let next_filter_shortcut = self.next_filter_shortcut.trim();
-        let previous_card_shortcut = self.previous_card_shortcut.trim();
-        let next_card_shortcut = self.next_card_shortcut.trim();
-        if main_shortcut.is_empty() {
-            return Err("唤醒快捷键不能为空".to_owned());
-        }
-        if previous_filter_shortcut.is_empty()
-            || next_filter_shortcut.is_empty()
-            || previous_card_shortcut.is_empty()
-            || next_card_shortcut.is_empty()
-        {
-            return Err("标签和卡片切换快捷键不能为空".to_owned());
-        }
-        let shortcuts = [
-            main_shortcut,
-            previous_filter_shortcut,
-            next_filter_shortcut,
-            previous_card_shortcut,
-            next_card_shortcut,
-        ];
-        if has_duplicate_shortcuts(&shortcuts) {
-            return Err("唤醒、标签切换和卡片切换快捷键不能重复".to_owned());
-        }
-        if shortcuts
-            .iter()
-            .any(|shortcut| shortcut.eq_ignore_ascii_case(SEARCH_SHORTCUT))
-        {
-            return Err("标签和卡片切换快捷键不能使用搜索快捷键 Command+F".to_owned());
-        }
-        if self.max_history_entries == 0 {
-            return Err("最大历史记录数必须大于 0".to_owned());
-        }
-        if !SUPPORTED_HISTORY_RETENTION_DAYS.contains(&self.history_retention_days) {
-            return Err("历史保留时间仅支持 7 天、30 天、90 天或永久保留".to_owned());
-        }
-        if !self.record_text && !self.record_images && !self.record_files {
-            return Err("请至少选择一种要记录的剪贴板类型".to_owned());
-        }
-        Ok(())
+        validate_settings(self)
     }
 }
 
@@ -129,12 +116,35 @@ fn default_next_card_shortcut() -> String {
     DEFAULT_NEXT_CARD_SHORTCUT.to_owned()
 }
 
-fn has_duplicate_shortcuts(shortcuts: &[&str]) -> bool {
-    shortcuts.iter().enumerate().any(|(index, shortcut)| {
-        shortcuts[..index]
+fn default_quick_tool_ids() -> Vec<QuickToolId> {
+    vec![
+        QuickToolId::TextDiff,
+        QuickToolId::Json,
+        QuickToolId::Url,
+        QuickToolId::Base64,
+        QuickToolId::Date,
+    ]
+}
+
+fn default_quick_tool_shortcuts() -> Vec<String> {
+    DEFAULT_QUICK_TOOL_SHORTCUTS
+        .iter()
+        .map(|shortcut| (*shortcut).to_owned())
+        .collect()
+}
+
+fn migrate_legacy_quick_tool_shortcuts(settings: &mut AppSettings) -> bool {
+    let is_legacy = settings.quick_tool_shortcuts.len() == MAX_QUICK_TOOLS
+        && settings
+            .quick_tool_shortcuts
             .iter()
-            .any(|other| other.eq_ignore_ascii_case(shortcut))
-    })
+            .zip(LEGACY_QUICK_TOOL_SHORTCUTS)
+            .all(|(current, legacy)| current.trim().eq_ignore_ascii_case(legacy));
+    if !is_legacy {
+        return false;
+    }
+    settings.quick_tool_shortcuts = default_quick_tool_shortcuts();
+    true
 }
 
 pub struct SettingsStore {
@@ -163,9 +173,13 @@ impl SettingsStore {
 
         let contents = fs::read_to_string(&self.path)
             .map_err(|error| format!("failed to read settings file: {error}"))?;
-        let settings = serde_json::from_str::<AppSettings>(&contents)
+        let mut settings = serde_json::from_str::<AppSettings>(&contents)
             .map_err(|error| format!("failed to parse settings file: {error}"))?;
+        let migrated = migrate_legacy_quick_tool_shortcuts(&mut settings);
         settings.validate()?;
+        if migrated {
+            self.save(&settings)?;
+        }
         Ok(settings)
     }
 
@@ -208,7 +222,9 @@ impl SettingsState {
 
 #[cfg(test)]
 mod tests {
-    use super::AppSettings;
+    use super::{
+        default_quick_tool_shortcuts, migrate_legacy_quick_tool_shortcuts, AppSettings, QuickToolId,
+    };
 
     #[test]
     fn default_main_shortcut_matches_the_current_platform() {
@@ -216,5 +232,68 @@ mod tests {
             AppSettings::default().main_shortcut,
             crate::platform::DEFAULT_MAIN_SHORTCUT
         );
+    }
+
+    #[test]
+    fn settings_without_quick_tools_receive_the_default_order() {
+        let mut value = serde_json::to_value(AppSettings::default()).unwrap();
+        value.as_object_mut().unwrap().remove("quickToolIds");
+        let settings = serde_json::from_value::<AppSettings>(value).unwrap();
+        assert_eq!(
+            settings.quick_tool_ids,
+            vec![
+                QuickToolId::TextDiff,
+                QuickToolId::Json,
+                QuickToolId::Url,
+                QuickToolId::Base64,
+                QuickToolId::Date,
+            ]
+        );
+    }
+
+    #[test]
+    fn settings_without_quick_tool_shortcuts_receive_command_defaults() {
+        let mut value = serde_json::to_value(AppSettings::default()).unwrap();
+        value.as_object_mut().unwrap().remove("quickToolShortcuts");
+        let settings = serde_json::from_value::<AppSettings>(value).unwrap();
+        assert_eq!(
+            settings.quick_tool_shortcuts,
+            vec![
+                "Command+1",
+                "Command+2",
+                "Command+3",
+                "Command+4",
+                "Command+5"
+            ]
+        );
+    }
+
+    #[test]
+    fn quick_tool_ids_use_frontend_names() {
+        assert_eq!(
+            serde_json::to_value(QuickToolId::TextDiff).unwrap(),
+            "text-diff"
+        );
+        assert_eq!(serde_json::to_value(QuickToolId::Base64).unwrap(), "base64");
+    }
+
+    #[test]
+    fn legacy_alt_quick_tool_shortcuts_migrate_to_command_defaults() {
+        let mut settings = AppSettings::default();
+        settings.quick_tool_shortcuts = (1..=5).map(|index| format!("Alt+{index}")).collect();
+        assert!(migrate_legacy_quick_tool_shortcuts(&mut settings));
+        assert_eq!(
+            settings.quick_tool_shortcuts,
+            default_quick_tool_shortcuts()
+        );
+    }
+
+    #[test]
+    fn custom_quick_tool_shortcuts_are_not_migrated() {
+        let mut settings = AppSettings::default();
+        settings.quick_tool_shortcuts[0] = "Alt+Q".to_owned();
+        let original = settings.quick_tool_shortcuts.clone();
+        assert!(!migrate_legacy_quick_tool_shortcuts(&mut settings));
+        assert_eq!(settings.quick_tool_shortcuts, original);
     }
 }

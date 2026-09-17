@@ -1,10 +1,19 @@
 const MODIFIER_KEYS = ["Alt", "Control", "Meta", "Shift"];
 
-export function isKeyboardModifierKey(event: KeyboardEvent) {
+export interface KeyboardShortcutEvent {
+  readonly altKey: boolean;
+  readonly code: string;
+  readonly ctrlKey: boolean;
+  readonly key: string;
+  readonly metaKey: boolean;
+  readonly shiftKey: boolean;
+}
+
+export function isKeyboardModifierKey(event: KeyboardShortcutEvent) {
   return MODIFIER_KEYS.includes(event.key);
 }
 
-export function keyboardShortcutFromEvent(event: KeyboardEvent) {
+export function keyboardShortcutFromEvent(event: KeyboardShortcutEvent) {
   if (isKeyboardModifierKey(event)) {
     return undefined;
   }
@@ -20,17 +29,31 @@ export function keyboardShortcutFromEvent(event: KeyboardEvent) {
   return [...modifiers, keyboardShortcutKey(event)].join("+");
 }
 
-export function matchesKeyboardShortcut(event: KeyboardEvent, shortcut: string) {
+export function matchesKeyboardShortcut(event: KeyboardShortcutEvent, shortcut: string) {
   const eventShortcut = keyboardShortcutFromEvent(event);
-  return eventShortcut?.toLowerCase() === shortcut.trim().toLowerCase();
+  return eventShortcut !== undefined
+    && normalizeKeyboardShortcut(eventShortcut) === normalizeKeyboardShortcut(shortcut);
 }
 
-function keyboardShortcutKey(event: KeyboardEvent) {
+function keyboardShortcutKey(event: KeyboardShortcutEvent) {
   if (event.code.startsWith("Key")) {
     return event.code.slice(3);
   }
   if (event.code.startsWith("Digit")) {
     return event.code.slice(5);
   }
-  return event.code === "Space" ? "Space" : event.code;
+  if (event.code === "Space") {
+    return "Space";
+  }
+  if (/^[0-9]$/.test(event.key)) {
+    return event.key;
+  }
+  return event.code;
+}
+
+function normalizeKeyboardShortcut(shortcut: string) {
+  return shortcut
+    .split("+")
+    .map((part) => part.trim().toLowerCase() === "option" ? "alt" : part.trim().toLowerCase())
+    .join("+");
 }

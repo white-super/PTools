@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { MAX_QUICK_TOOLS } from "../../features/quick-tools/quickToolOrder";
 import type { AppSettings } from "../../types/settings";
 import ShortcutCaptureRow from "./ShortcutCaptureRow.vue";
 
@@ -25,6 +26,12 @@ const previousFilterShortcut = settingField("previousFilterShortcut");
 const nextFilterShortcut = settingField("nextFilterShortcut");
 const previousCardShortcut = settingField("previousCardShortcut");
 const nextCardShortcut = settingField("nextCardShortcut");
+
+function updateQuickToolShortcut(index: number, value: string) {
+  const quickToolShortcuts = [...settings.value.quickToolShortcuts];
+  quickToolShortcuts[index] = value;
+  settings.value = { ...settings.value, quickToolShortcuts };
+}
 </script>
 
 <template>
@@ -53,6 +60,14 @@ const nextCardShortcut = settingField("nextCardShortcut");
       v-model="nextCardShortcut"
       title="下一张卡片快捷键"
       description="向右选择卡片，也可以使用右方向键"
+    />
+    <ShortcutCaptureRow
+      v-for="shortcutIndex in MAX_QUICK_TOOLS"
+      :key="shortcutIndex"
+      :model-value="settings.quickToolShortcuts[shortcutIndex - 1]"
+      :title="`快捷工具 ${shortcutIndex}`"
+      :description="`执行工具栏第 ${shortcutIndex} 个工具，排序后仍按位置生效`"
+      @update:model-value="updateQuickToolShortcut(shortcutIndex - 1, $event)"
     />
   </div>
 </template>

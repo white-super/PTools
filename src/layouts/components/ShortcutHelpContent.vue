@@ -9,6 +9,18 @@ interface Props {
 const props = defineProps<Props>();
 const emit = defineEmits<{ close: [] }>();
 const shortcutSettings = computed(() => props.shortcutSettings);
+
+function quickToolShortcutSummary(shortcuts: readonly string[]) {
+  const parts = shortcuts.map((shortcut) => shortcut.match(/^(.+)\+(\d)$/));
+  const modifier = parts[0]?.[1];
+  const isNumberRange = parts.length > 0 && parts.every(
+    (part, index) => part !== null
+      && part[1] === modifier
+      && part[2] === String(index + 1),
+  );
+  return isNumberRange ? `${modifier}+1–${parts.length}` : shortcuts.join(" / ");
+}
+
 const helpSections = computed(() => [
   {
     title: "面板操作",
@@ -17,6 +29,10 @@ const helpSections = computed(() => [
       { label: "定位搜索框", shortcut: "Command+F" },
       { label: "粘贴选中内容", shortcut: "Enter" },
       { label: "快速粘贴前五项", shortcut: "1–5" },
+      {
+        label: "执行快捷工具",
+        shortcut: quickToolShortcutSummary(shortcutSettings.value.quickToolShortcuts),
+      },
       { label: "使用文本工具", shortcut: "F" },
       { label: "标记 / 对比选中内容", shortcut: "D" },
       { label: "固定格式化窗口", shortcut: "Command+D / Alt+D" },

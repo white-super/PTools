@@ -11,6 +11,8 @@ use tauri::{Position, Size};
 mod generic;
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "macos")]
+mod macos_event_monitor;
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 mod other;
 #[cfg(target_os = "windows")]
@@ -25,8 +27,11 @@ pub(crate) use windows::*;
 
 pub(crate) const MAIN_PANEL_LABEL: &str = "main";
 pub(crate) const MAIN_PANEL_FOCUS_EVENT: &str = "ptools://main-panel-focus";
+#[cfg(not(target_os = "macos"))]
 pub(crate) const MAIN_PANEL_BLUR_EVENT: &str = "ptools://main-panel-blur";
 pub(crate) const MAIN_PANEL_DISMISS_EVENT: &str = "ptools://main-panel-dismiss";
+pub(crate) const MAIN_PANEL_QUICK_TOOL_SHORTCUT_EVENT: &str =
+    "ptools://main-panel-quick-tool-shortcut";
 pub(crate) const WINDOW_MOVED_EVENT: &str = "tauri://move";
 pub(crate) const WINDOW_RESIZED_EVENT: &str = "tauri://resize";
 
@@ -164,6 +169,10 @@ impl MainPanelState {
         self.suppress_next_blur.store(true, Ordering::Release);
     }
 
+    pub(crate) fn clear_blur_suppression(&self) {
+        self.suppress_next_blur.store(false, Ordering::Release);
+    }
+
     pub(crate) fn take_blur_suppression(&self) -> bool {
         self.suppress_next_blur.swap(false, Ordering::AcqRel)
     }
@@ -216,6 +225,15 @@ mod tests {
         state.suppress_next_blur();
 
         assert!(state.take_blur_suppression());
+        assert!(!state.take_blur_suppression());
+    }
+
+    #[test]
+    fn showing_again_clears_a_stale_blur_suppression() {
+        let state = MainPanelState::default();
+        state.suppress_next_blur();
+        state.clear_blur_suppression();
+
         assert!(!state.take_blur_suppression());
     }
 

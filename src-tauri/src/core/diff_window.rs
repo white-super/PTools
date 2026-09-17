@@ -67,6 +67,13 @@ impl DiffState {
             .contains_key(label))
     }
 
+    pub fn has_windows(&self) -> Result<bool, String> {
+        self.inputs
+            .read()
+            .map(|inputs| !inputs.is_empty())
+            .map_err(|error| error.to_string())
+    }
+
     pub fn remove(&self, label: &str) -> Result<(), String> {
         self.inputs
             .write()

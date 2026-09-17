@@ -2,13 +2,14 @@ import { shallowRef, type Ref } from "vue";
 import { getTextFormatterOptions } from "../features/text-formatter/formatters/registry";
 import type { TextFormatterOption } from "../features/text-formatter/types";
 import type { ClipboardHistoryEntry, ClipboardTag } from "../types/settings";
-
-const MENU_WIDTH = 152;
-const MENU_MAX_HEIGHT = 264;
-const MENU_BASE_HEIGHT = 144;
-const MENU_ROW_HEIGHT = 32;
-const MENU_VERTICAL_PADDING = 8;
-const VIEWPORT_MARGIN = 8;
+import {
+  CARD_CONTEXT_MENU_BASE_HEIGHT_PX,
+  CARD_CONTEXT_MENU_MAX_HEIGHT_PX,
+  CARD_CONTEXT_MENU_ROW_HEIGHT_PX,
+  CARD_CONTEXT_MENU_VERTICAL_PADDING_PX,
+  CARD_CONTEXT_MENU_VIEWPORT_MARGIN_PX,
+  CARD_CONTEXT_MENU_WIDTH_PX,
+} from "../utils/cardContextMenuLayout";
 
 interface UseCardContextMenuOptions {
   readonly tags: Readonly<Ref<readonly ClipboardTag[]>>;
@@ -37,11 +38,17 @@ export function useCardContextMenu(options: UseCardContextMenuOptions) {
       cardId: card.id,
       x: Math.min(
         event.clientX,
-        Math.max(VIEWPORT_MARGIN, window.innerWidth - MENU_WIDTH - VIEWPORT_MARGIN),
+        Math.max(
+          CARD_CONTEXT_MENU_VIEWPORT_MARGIN_PX,
+          window.innerWidth - CARD_CONTEXT_MENU_WIDTH_PX - CARD_CONTEXT_MENU_VIEWPORT_MARGIN_PX,
+        ),
       ),
       y: Math.min(
         event.clientY,
-        Math.max(VIEWPORT_MARGIN, window.innerHeight - menuHeight(tools.length) - VIEWPORT_MARGIN),
+        Math.max(
+          CARD_CONTEXT_MENU_VIEWPORT_MARGIN_PX,
+          window.innerHeight - menuHeight(tools.length) - CARD_CONTEXT_MENU_VIEWPORT_MARGIN_PX,
+        ),
       ),
       assignedTagIds: card.tagIds,
       tools,
@@ -49,12 +56,21 @@ export function useCardContextMenu(options: UseCardContextMenuOptions) {
   }
 
   function menuHeight(toolCount: number) {
-    const toolHeight = toolCount * MENU_ROW_HEIGHT + MENU_VERTICAL_PADDING;
-    const tagHeight = options.tags.value.length > 0 ? MENU_MAX_HEIGHT : 0;
-    return Math.max(MENU_BASE_HEIGHT, toolHeight, tagHeight);
+    return Math.max(
+      CARD_CONTEXT_MENU_BASE_HEIGHT_PX,
+      submenuHeight(toolCount),
+      submenuHeight(options.tags.value.length),
+    );
   }
 
   return { closeCardContextMenu, contextMenu, openCardContextMenu };
+}
+
+function submenuHeight(rowCount: number) {
+  return Math.min(
+    CARD_CONTEXT_MENU_MAX_HEIGHT_PX,
+    rowCount * CARD_CONTEXT_MENU_ROW_HEIGHT_PX + CARD_CONTEXT_MENU_VERTICAL_PADDING_PX,
+  );
 }
 
 function availableTools(card: ClipboardHistoryEntry) {

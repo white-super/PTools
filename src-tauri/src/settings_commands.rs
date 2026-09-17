@@ -1,9 +1,14 @@
 use crate::{
-    core::handle::Handle,
+    core::{
+        diff_window::DiffState,
+        formatter_window::{TextFormat, TextFormatterState},
+        handle::Handle,
+        main_panel_shortcuts,
+    },
     storage::{
         AppSettings, ClipboardHistoryInput, ClipboardHistoryPage, ClipboardHistoryQuery,
-        ClipboardTag, ClipboardTagInput, HistoryStats, HistoryStore, SettingsState, SettingsStore,
-        TagStore,
+        ClipboardTag, ClipboardTagInput, HistoryStats, HistoryStore, QuickToolId, SettingsState,
+        SettingsStore, TagStore,
     },
 };
 use tauri::{AppHandle, Emitter, Manager};
@@ -22,6 +27,38 @@ pub fn get_app_settings(app_handle: AppHandle) -> CmdResult<AppSettings> {
 #[tauri::command]
 pub fn update_app_settings(app_handle: AppHandle, settings: AppSettings) -> CmdResult<AppSettings> {
     apply_settings(&app_handle, settings)
+}
+
+#[tauri::command]
+pub fn update_quick_tools(
+    app_handle: AppHandle,
+    quick_tool_ids: Vec<QuickToolId>,
+) -> CmdResult<AppSettings> {
+    let settings_state = app_handle.state::<SettingsState>();
+    let mut settings = settings_state.get()?;
+    settings.quick_tool_ids = quick_tool_ids;
+    settings.validate()?;
+    app_handle.state::<SettingsStore>().save(&settings)?;
+    settings_state.replace(settings.clone())?;
+    emit_settings_update(&app_handle, &settings)?;
+    refresh_main_panel_shortcuts(&app_handle);
+    Ok(settings)
+}
+
+#[tauri::command]
+pub fn get_active_quick_tools(app_handle: AppHandle) -> CmdResult<Vec<QuickToolId>> {
+    let mut tool_ids = app_handle
+        .state::<TextFormatterState>()
+        .active_formats()?
+        .into_iter()
+        .map(formatter_quick_tool_id)
+        .collect::<Vec<_>>();
+    if app_handle.state::<DiffState>().has_windows()? {
+        tool_ids.push(QuickToolId::TextDiff);
+    }
+    tool_ids.sort();
+    tool_ids.dedup();
+    Ok(tool_ids)
 }
 
 #[tauri::command]
@@ -142,15 +179,37 @@ fn apply_settings(app_handle: &AppHandle, settings: AppSettings) -> CmdResult<Ap
     }
 
     settings_state.replace(settings.clone())?;
+    refresh_main_panel_shortcuts(app_handle);
     Handle::set_app_theme(app_handle, settings.theme);
     app_handle
         .state::<HistoryStore>()
         .cleanup_history(&settings)?;
     emit_history_update(app_handle)?;
-    app_handle
-        .emit(SETTINGS_UPDATED_EVENT, &settings)
-        .map_err(|error| format!("failed to notify application windows about settings: {error}"))?;
+    emit_settings_update(app_handle, &settings)?;
     Ok(settings)
+}
+
+fn emit_settings_update(app_handle: &AppHandle, settings: &AppSettings) -> CmdResult {
+    app_handle
+        .emit(SETTINGS_UPDATED_EVENT, settings)
+        .map_err(|error| format!("failed to notify application windows about settings: {error}"))
+}
+
+fn refresh_main_panel_shortcuts(app_handle: &AppHandle) {
+    if let Err(error) = main_panel_shortcuts::refresh_if_visible(app_handle) {
+        eprintln!("failed to refresh main panel shortcuts: {error}");
+    }
+}
+
+fn formatter_quick_tool_id(format: TextFormat) -> QuickToolId {
+    match format {
+        TextFormat::Json => QuickToolId::Json,
+        TextFormat::Xml => QuickToolId::Xml,
+        TextFormat::Html => QuickToolId::Html,
+        TextFormat::Url => QuickToolId::Url,
+        TextFormat::Base64 => QuickToolId::Base64,
+        TextFormat::Date => QuickToolId::Date,
+    }
 }
 
 fn emit_history_update(app_handle: &AppHandle) -> CmdResult {

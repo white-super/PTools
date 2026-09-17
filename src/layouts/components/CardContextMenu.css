@@ -1,0 +1,193 @@
+.context-menu {
+  position: fixed;
+  z-index: 50;
+  box-sizing: border-box;
+  width: var(--context-menu-width);
+  padding: 6px;
+  border: 1px solid var(--app-border);
+  border-radius: 11px;
+  color: var(--app-text);
+  background: var(--app-menu-background);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.18), 0 3px 10px rgba(15, 23, 42, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+.context-menu-group {
+  display: grid;
+  gap: 1px;
+}
+
+.context-menu-item {
+  display: grid;
+  width: 100%;
+  min-height: 34px;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  color: var(--app-text);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: left;
+  cursor: default;
+  transition: color 90ms ease, background-color 90ms ease;
+}
+
+.context-menu-item:hover:not(:disabled),
+.context-menu-item:focus-visible:not(:disabled),
+.context-menu-submenu-container:hover > .context-menu-submenu-trigger,
+.context-menu-submenu-container:focus-within > .context-menu-submenu-trigger {
+  color: var(--app-on-primary);
+  background: var(--app-primary);
+  outline: none;
+}
+
+.context-menu-item:active:not(:disabled) {
+  background: color-mix(in srgb, var(--app-primary) 86%, var(--app-heading));
+}
+
+.context-menu-item:disabled {
+  color: var(--app-muted);
+  opacity: 0.48;
+}
+
+.context-menu-label,
+.tool-name,
+.tag-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-menu-trailing {
+  display: inline-flex;
+  min-width: 15px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  color: var(--app-muted);
+}
+
+.context-menu-shortcut {
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.context-menu-submenu-arrow {
+  width: 10px;
+  color: inherit;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 14px;
+  text-align: center;
+}
+
+.context-menu-item:hover:not(:disabled) .context-menu-trailing,
+.context-menu-item:focus-visible:not(:disabled) .context-menu-trailing,
+.context-menu-submenu-container:hover > .context-menu-submenu-trigger .context-menu-trailing,
+.context-menu-submenu-container:focus-within > .context-menu-submenu-trigger .context-menu-trailing {
+  color: color-mix(in srgb, var(--app-on-primary) 78%, transparent);
+}
+
+.context-menu-divider {
+  height: 1px;
+  margin: 5px 7px;
+  background: var(--app-border);
+}
+
+.context-menu-submenu-container {
+  position: relative;
+}
+
+.context-menu-submenu-container::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: var(--context-menu-submenu-offset);
+  content: "";
+}
+
+.context-menu-submenu-container-left::after {
+  right: 100%;
+  left: auto;
+}
+
+.context-menu-submenu {
+  position: absolute;
+  top: -6px;
+  left: calc(100% + var(--context-menu-submenu-offset));
+  max-height: min(var(--context-menu-max-height), calc(100vh - 16px));
+  overflow-y: auto;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-3px) scale(0.985);
+  transform-origin: left top;
+  transition: opacity 100ms ease, transform 100ms ease, visibility 0s linear 100ms;
+}
+
+.context-menu-submenu-left {
+  right: calc(100% + var(--context-menu-submenu-offset));
+  left: auto;
+  transform: translateX(3px) scale(0.985);
+  transform-origin: right top;
+}
+
+.context-menu-submenu-container:hover > .context-menu-submenu,
+.context-menu-submenu-container:focus-within > .context-menu-submenu {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0) scale(1);
+  transition-delay: 0s;
+}
+
+.context-menu-item-selected {
+  background: var(--app-active);
+}
+
+.tag-color {
+  width: 10px;
+  height: 10px;
+  justify-self: center;
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 999px;
+}
+
+.tag-selection {
+  min-width: 14px;
+  margin-left: auto;
+  color: var(--app-primary);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.context-menu-item:hover:not(:disabled) .tag-selection,
+.context-menu-item:focus-visible:not(:disabled) .tag-selection {
+  color: var(--app-on-primary);
+}
+
+.context-menu-item-danger {
+  color: var(--app-danger);
+}
+
+.context-menu-item-danger:hover:not(:disabled),
+.context-menu-item-danger:focus-visible:not(:disabled) {
+  color: var(--app-on-primary);
+}
+
+:global(html.theme-dark) .context-menu {
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.48), 0 3px 12px rgba(0, 0, 0, 0.34);
+}

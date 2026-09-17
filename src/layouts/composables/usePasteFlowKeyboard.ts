@@ -1,5 +1,7 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { onMounted, onUnmounted, shallowRef, watch, type Ref } from "vue";
+import { onMounted, onUnmounted, watch, type Ref } from "vue";
+import { quickToolIndexFromKeyboard } from "../features/quick-tools/quickToolShortcut";
+import type { QuickToolId } from "../features/quick-tools/types";
 import type {
   ClipboardFilter,
   ClipboardHistoryEntry,
@@ -19,13 +21,21 @@ interface CardNavigationOptions {
   readonly shortcutSettings: ShortcutSettingsRef;
 }
 
+interface QuickToolOptions {
+  readonly toolIds: Readonly<Ref<readonly QuickToolId[]>>;
+  readonly shortcuts: Readonly<Ref<readonly string[]>>;
+  readonly execute: (toolId: QuickToolId) => void;
+}
+
 interface UsePasteFlowKeyboardOptions {
+  readonly selectedCardId: Ref<number | undefined>;
   readonly cards: Readonly<Ref<readonly ClipboardHistoryEntry[]>>;
   readonly getCardContainer: () => HTMLElement | null;
   readonly scrollToCard: (cardId: number) => void;
   readonly cardNavigation: CardNavigationOptions;
   readonly closeMenus: () => void;
   readonly focusSearch: () => void;
+  readonly quickTools: QuickToolOptions;
   readonly filterNavigation: FilterNavigationOptions;
   readonly formatCard: (card: ClipboardHistoryEntry) => void;
   readonly diffCard: (card: ClipboardHistoryEntry) => void;
@@ -37,7 +47,7 @@ const MAIN_PANEL_FOCUS_EVENT = "ptools://main-panel-focus";
 export const MAX_QUICK_SELECT_CARDS = 5;
 
 export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
-  const selectedCardId = shallowRef<number>();
+  const selectedCardId = options.selectedCardId;
   let disposed = false;
   let unlistenPanelFocus: UnlistenFn | undefined;
 
@@ -155,8 +165,23 @@ export function usePasteFlowKeyboard(options: UsePasteFlowKeyboardOptions) {
     return true;
   }
 
+  function handleQuickToolShortcut(event: KeyboardEvent) {
+    const index = quickToolIndexFromKeyboard(event, options.quickTools.shortcuts.value);
+    if (index === undefined) return false;
+    const toolId = options.quickTools.toolIds.value[index];
+    if (!toolId) return false;
+    event.preventDefault();
+    options.closeMenus();
+    options.quickTools.execute(toolId);
+    return true;
+  }
+
   function handleNavigationKeydown(event: KeyboardEvent) {
-    if (event.defaultPrevented || event.isComposing || (event.target instanceof Element && event.target.closest(".el-overlay"))) return;
+    if (event.isComposing || (event.target instanceof Element && event.target.closest(".el-overlay"))) return;
+    if (handleQuickToolShortcut(event)) {
+      return;
+    }
+    if (event.defaultPrevented) return;
     if (event.metaKey && event.key.toLowerCase() === "f") {
       event.preventDefault();
       options.closeMenus();

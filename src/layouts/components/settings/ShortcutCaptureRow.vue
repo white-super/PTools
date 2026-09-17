@@ -22,7 +22,7 @@ function captureShortcut(event: KeyboardEvent) {
   }
   const capturedShortcut = keyboardShortcutFromEvent(event);
   if (!capturedShortcut) {
-    captureHint.value = "快捷键必须包含 Ctrl、Option、Shift 或 Command";
+    captureHint.value = "快捷键必须包含 Ctrl、Alt（macOS Option）、Shift 或 Command";
     return;
   }
   shortcut.value = capturedShortcut;

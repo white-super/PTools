@@ -20,6 +20,7 @@ import type {
   ClipboardTagInput,
   SystemPermissionStatus,
 } from "../types/settings";
+import type { QuickToolId } from "../features/quick-tools/types";
 
 const HISTORY_UPDATED_EVENT = "clipboard-history-updated";
 const MAIN_PANEL_FOCUS_EVENT = "ptools://main-panel-focus";
@@ -188,6 +189,12 @@ export function useClipboardHistory() {
     await invoke("delete_clipboard_history", { id });
   }
 
+  async function updateQuickToolIds(quickToolIds: readonly QuickToolId[]) {
+    settings.value = await invoke<AppSettings>("update_quick_tools", {
+      quickToolIds: [...quickToolIds],
+    });
+  }
+
   async function createTag(input: ClipboardTagInput) {
     const nextTags = await invoke<ClipboardTag[]>("create_clipboard_tag", { input });
     updateTags(nextTags);
@@ -268,6 +275,7 @@ export function useClipboardHistory() {
     setCardTags,
     settings,
     tags,
+    updateQuickToolIds,
     updateTag,
   };
 }

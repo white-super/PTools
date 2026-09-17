@@ -1,6 +1,6 @@
 use tauri::{AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, WebviewWindow};
 
-use crate::{platform, system_permissions};
+use crate::{core::main_panel_shortcuts, platform, system_permissions};
 
 type CmdResult<T = ()> = Result<T, String>;
 
@@ -9,7 +9,13 @@ pub(crate) fn show_main_panel_now(
     window: &WebviewWindow,
     cursor_position: PhysicalPosition<f64>,
 ) -> CmdResult {
+    app_handle
+        .state::<platform::MainPanelState>()
+        .clear_blur_suppression();
     platform::show_main_panel(app_handle, window, cursor_position)?;
+    if let Err(error) = main_panel_shortcuts::register(app_handle) {
+        eprintln!("failed to activate main panel shortcuts: {error}");
+    }
     app_handle
         .emit_to(
             EventTarget::labeled(platform::MAIN_PANEL_LABEL),
@@ -39,7 +45,8 @@ pub(crate) fn hide_main_panel_now(app_handle: &AppHandle) -> CmdResult {
             .state::<platform::MainPanelState>()
             .suppress_next_blur();
     }
-    platform::hide_main_panel(app_handle, &window)
+    platform::hide_main_panel(app_handle, &window)?;
+    main_panel_shortcuts::unregister(app_handle)
 }
 
 async fn run_main_panel_task(

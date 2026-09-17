@@ -236,7 +236,7 @@
   display: grid;
   min-width: 0;
   flex: 0 0 auto;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px) minmax(245px, 1fr);
   align-items: center;
   gap: 12px;
 }
@@ -288,4 +288,8 @@
   width: min(460px, calc(100% - 28px));
   transform: translateX(-50%);
   pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .panel-toolbar { grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) auto; gap: 8px; }
 }

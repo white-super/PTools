@@ -1,79 +1,65 @@
 <script setup lang="ts">
 import ClipboardMoreMenu from "./ClipboardMoreMenu.vue";
+import QuickToolsBar from "../features/quick-tools/components/QuickToolsBar.vue";
+import type { QuickToolId } from "../features/quick-tools/types";
 
+interface Props {
+  readonly toolIds: readonly QuickToolId[];
+  readonly toolShortcuts: readonly string[];
+  readonly activeToolIds: readonly QuickToolId[];
+  readonly savingToolOrder: boolean;
+}
+
+const props = defineProps<Props>();
 const moreMenuOpen = defineModel<boolean>({ required: true });
-const emit = defineEmits<{ settings: []; textDiff: [] }>();
+const toolManagerOpen = defineModel<boolean>("toolManagerOpen", { required: true });
+const emit = defineEmits<{
+  settings: [];
+  executeTool: [toolId: QuickToolId];
+  toolOrderChange: [toolIds: readonly QuickToolId[]];
+  toolError: [error: unknown];
+}>();
 </script>
 
 <template>
   <div class="toolbar-actions">
-    <button
-      type="button"
-      class="text-diff-trigger"
-      aria-label="打开空白文本对比窗口"
-      title="文本对比（打开后默认置顶）"
-      @click="emit('textDiff')"
-    >
-      <svg viewBox="0 0 20 20" aria-hidden="true">
-        <rect x="2.5" y="3" width="5.5" height="14" rx="1.5" />
-        <rect x="12" y="3" width="5.5" height="14" rx="1.5" />
-        <path d="M9.5 7.25h1M9.5 12.75h1" />
-      </svg>
-      <span>文本对比</span>
-    </button>
-    <ClipboardMoreMenu v-model="moreMenuOpen" @settings="emit('settings')" />
+    <div class="quick-tools-position">
+      <QuickToolsBar
+        v-model="toolManagerOpen"
+        :tool-ids="props.toolIds"
+        :tool-shortcuts="props.toolShortcuts"
+        :active-tool-ids="props.activeToolIds"
+        :saving="props.savingToolOrder"
+        @execute="emit('executeTool', $event)"
+        @order-change="emit('toolOrderChange', $event)"
+        @error="emit('toolError', $event)"
+      />
+    </div>
+    <div class="more-menu-position">
+      <ClipboardMoreMenu v-model="moreMenuOpen" @settings="emit('settings')" />
+    </div>
   </div>
 </template>
 
 <style scoped>
 .toolbar-actions {
-  display: flex;
+  display: grid;
+  width: 100%;
   min-width: 0;
   grid-column: 3;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(28px, 1fr);
+  align-items: flex-start;
+  background: transparent;
+  box-shadow: none;
 }
 
-.text-diff-trigger {
-  display: inline-flex;
-  height: 28px;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px;
-  border: 1px solid var(--panel-search-border);
-  border-radius: 7px;
-  color: var(--panel-filter-hover-text);
-  background: var(--panel-control);
-  box-shadow: var(--panel-search-shadow);
-  backdrop-filter: var(--panel-control-backdrop);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 550;
-  cursor: pointer;
-  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
-  -webkit-backdrop-filter: var(--panel-control-backdrop);
+.quick-tools-position {
+  grid-column: 2;
 }
 
-.text-diff-trigger svg {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.35;
-}
-
-.text-diff-trigger:hover {
-  border-color: var(--panel-search-focus-border);
-  color: var(--panel-filter-active-text);
-  background: var(--panel-control-active);
-}
-
-.text-diff-trigger:focus-visible {
-  outline: 2px solid var(--panel-search-focus-border);
-  outline-offset: 2px;
+.more-menu-position {
+  display: flex;
+  grid-column: 3;
+  justify-content: flex-end;
 }
 </style>

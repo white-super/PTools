@@ -1,3 +1,5 @@
+import type { QuickToolId } from "../features/quick-tools/types";
+
 export type ClipboardFormat = "text" | "image" | "file";
 export type ClipboardFilter = "all" | ClipboardFormat | number;
 export type AppTheme = "soft-glow" | "classic" | "dark";
@@ -9,6 +11,8 @@ export interface AppSettings {
   readonly nextFilterShortcut: string;
   readonly previousCardShortcut: string;
   readonly nextCardShortcut: string;
+  readonly quickToolIds: readonly QuickToolId[];
+  readonly quickToolShortcuts: readonly string[];
   readonly showFormatFilters: boolean;
   readonly historyRetentionDays: number;
   readonly maxHistoryEntries: number;
@@ -20,7 +24,12 @@ export interface AppSettings {
 
 export type PasteFlowShortcutSettings = Pick<
   AppSettings,
-  "mainShortcut" | "previousFilterShortcut" | "nextFilterShortcut" | "previousCardShortcut" | "nextCardShortcut"
+  | "mainShortcut"
+  | "previousFilterShortcut"
+  | "nextFilterShortcut"
+  | "previousCardShortcut"
+  | "nextCardShortcut"
+  | "quickToolShortcuts"
 >;
 
 export interface ClipboardHistoryEntry {

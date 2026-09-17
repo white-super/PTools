@@ -34,15 +34,23 @@ export async function runTextDiffEntryChecks() {
       const { openEmptyTextDiff } = useTextDiffLauncher((error) => errors.push(error));
       return () => h(ClipboardToolbarActions, {
         modelValue: false,
+        toolManagerOpen: false,
+        toolIds: ["text-diff", "json", "url", "base64", "date"],
+        toolShortcuts: ["Command+1", "Command+2", "Command+3", "Command+4", "Command+5"],
+        activeToolIds: [],
+        savingToolOrder: false,
         "onUpdate:modelValue": () => {},
-        onTextDiff: openEmptyTextDiff,
+        "onUpdate:toolManagerOpen": () => {},
+        onExecuteTool: (toolId) => {
+          if (toolId === "text-diff") void openEmptyTextDiff();
+        },
       });
     },
   });
   try {
     app.mount(host);
-    const trigger = host.querySelector('[aria-label="打开空白文本对比窗口"]');
-    assert(trigger?.textContent.includes("文本对比"), "text comparison entry is missing");
+    const trigger = host.querySelector('[aria-label="文本对比，快捷键 Command+1"]');
+    assert(trigger, "text comparison entry is missing");
     trigger.click();
     await waitFor(() => calls.length === 1, "text comparison entry did not launch a window");
     const request = calls[0];
