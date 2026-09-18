@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { shallowRef } from "vue";
+import { computed, shallowRef } from "vue";
 import {
   isKeyboardModifierKey,
   keyboardShortcutFromEvent,
@@ -8,11 +8,13 @@ import {
 interface Props {
   readonly title: string;
   readonly description: string;
+  readonly displayValue?: string;
 }
 
 const props = defineProps<Props>();
 const shortcut = defineModel<string>({ required: true });
 const captureHint = shallowRef(props.description);
+const displayedShortcut = computed(() => props.displayValue ?? shortcut.value);
 
 function captureShortcut(event: KeyboardEvent) {
   event.preventDefault();
@@ -38,7 +40,7 @@ function captureShortcut(event: KeyboardEvent) {
         <p class="field-hint">{{ captureHint }}</p>
       </div>
       <el-input
-        v-model="shortcut"
+        :model-value="displayedShortcut"
         class="shortcut-input"
         size="small"
         readonly

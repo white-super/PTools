@@ -11,6 +11,10 @@ defineProps<{ toolId: QuickToolId }>();
       <rect x="14.5" y="4" width="6.5" height="16" rx="1.5" />
       <path d="M11.25 8h1.5M11.25 16h1.5" />
     </g>
+    <g v-else-if="toolId === 'sequential-paste'">
+      <path d="M5 6.5h11M5 12h8M5 17.5h5" />
+      <path d="m16 14 3 3-3 3M19 17H13" />
+    </g>
     <path v-else-if="toolId === 'json'" d="M9 3.5H7.8c-1.5 0-2.1.7-2.1 2.2v3.1c0 1.5-.6 2.2-1.8 2.2 1.2 0 1.8.7 1.8 2.2v3.1c0 1.5.6 2.2 2.1 2.2H9M15 3.5h1.2c1.5 0 2.1.7 2.1 2.2v3.1c0 1.5.6 2.2 1.8 2.2-1.2 0-1.8.7-1.8 2.2v3.1c0 1.5-.6 2.2-2.1 2.2H15" />
     <path v-else-if="toolId === 'xml'" d="m8.5 7-5 5 5 5M15.5 7l5 5-5 5M13.8 4.5 10.2 19.5" />
     <g v-else-if="toolId === 'html'">

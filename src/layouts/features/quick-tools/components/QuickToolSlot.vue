@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import QuickToolIcon from "./QuickToolIcon.vue";
+import { formatQuickToolShortcut } from "../quickToolShortcut";
 import type { QuickToolDefinition } from "../types";
 
 interface Props {
@@ -19,6 +21,7 @@ const emit = defineEmits<{
   dragOver: [after: boolean];
   drop: [];
 }>();
+const shortcutLabel = computed(() => formatQuickToolShortcut(props.shortcut));
 
 function handleDragOver(event: DragEvent) {
   event.preventDefault();
@@ -44,7 +47,7 @@ function handleDragOver(event: DragEvent) {
       type="button"
       class="quick-tool-button"
       :draggable="props.draggable"
-      :aria-label="`${props.tool.label}，快捷键 ${props.shortcut}`"
+      :aria-label="`${props.tool.label}，快捷键 ${shortcutLabel}`"
       :aria-pressed="props.active"
       @click="emit('activate')"
       @dragstart="emit('dragStart', $event)"
@@ -53,7 +56,7 @@ function handleDragOver(event: DragEvent) {
       <QuickToolIcon :tool-id="props.tool.id" />
     </button>
     <span class="quick-tool-tooltip" aria-hidden="true">
-      {{ props.tool.label }}（{{ props.shortcut }}）
+      {{ props.tool.label }}（{{ shortcutLabel }}）
     </span>
   </div>
 </template>

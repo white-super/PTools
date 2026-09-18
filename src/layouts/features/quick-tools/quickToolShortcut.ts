@@ -13,6 +13,13 @@ export const DEFAULT_QUICK_TOOL_SHORTCUTS: readonly string[] = [
   "Command+1", "Command+2", "Command+3", "Command+4", "Command+5",
 ];
 
+export function formatQuickToolShortcut(shortcut: string) {
+  return shortcut
+    .split("+")
+    .map((part) => part.trim().toLowerCase() === "command" ? "cmd" : part.trim())
+    .join("+");
+}
+
 export function quickToolIndexFromKeyboard(
   event: QuickToolKeyboardEvent,
   shortcuts: readonly string[] = DEFAULT_QUICK_TOOL_SHORTCUTS,

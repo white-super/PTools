@@ -32,6 +32,10 @@ export function useTextFormatter(options: UseTextFormatterOptions) {
 
   function receiveInput(nextInput: TextFormatterInput) {
     input.value = nextInput;
+    if (nextInput.content.length === 0) {
+      content.value = "";
+      return;
+    }
     try {
       content.value = getTextFormatter(nextInput.format).prepare(nextInput.content);
     } catch (error) {

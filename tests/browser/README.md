@@ -12,11 +12,13 @@ async () => {
   const contextMenu = await import("/tests/browser/contextMenu.browser.mjs");
   const quickTools = await import("/tests/browser/quickTools.browser.mjs");
   const alignment = await import("/tests/browser/diffAlignment.browser.mjs");
+  const sequentialPaste = await import("/tests/browser/sequentialPaste.browser.mjs");
   return {
     workspace: await checks.runTextDiffBrowserChecks(),
     diffEntry: await entry.runTextDiffEntryChecks(),
     panelDismissal: await dismissal.runPanelDismissalChecks(),
     formatterKeyboard: await formatter.runTextFormatterKeyboardChecks(),
+    emptyFormatter: await formatter.runEmptyTextFormatterChecks(),
     keyboard: await checks.runDiffKeyboardChecks(),
     worker: await checks.runDiffWorkerChecks(),
     diffAlignment: await alignment.runDiffAlignmentChecks(),
@@ -24,6 +26,8 @@ async () => {
     cardViewport: await cards.runCardViewportRecoveryChecks(),
     cardContextMenu: await contextMenu.runCardContextMenuChecks(),
     quickTools: await quickTools.runQuickToolsBrowserChecks(),
+    quickToolLaunch: await quickTools.runQuickToolLaunchChecks(),
+    sequentialPaste: await sequentialPaste.runSequentialPasteBrowserChecks(),
   };
 }
 ```
@@ -43,5 +47,7 @@ Call `mountCardStatePreview("classic")` from the same preview module to compare 
 Import `contextMenu.browser.mjs` and call `mountCardContextMenuPreview("classic")` to inspect the card menu and its real tool/tag submenus.
 
 Import `quickTools.browser.mjs` and call `mountQuickToolsPreview("classic")` to inspect the independent shortcut slots and tool manager.
+
+Import `sequentialPaste.browser.mjs` and call `mountSequentialPastePreview("classic")` to inspect capture mode, or pass `"paste"` as the second argument to inspect paste mode.
 
 Import `diffEditing.browser.mjs` and call `mountCardNoticePreview("classic")` to inspect card-anchored error notices without reading clipboard data.

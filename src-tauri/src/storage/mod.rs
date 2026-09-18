@@ -4,7 +4,8 @@ mod settings_validation;
 mod tags;
 
 pub use history::{
-    ClipboardHistoryInput, ClipboardHistoryPage, ClipboardHistoryQuery, HistoryStats, HistoryStore,
+    ClipboardFormat, ClipboardHistoryInput, ClipboardHistoryPage, ClipboardHistoryQuery,
+    HistoryStats, HistoryStore,
 };
 pub use settings::{AppSettings, AppTheme, QuickToolId, SettingsState, SettingsStore};
 pub use tags::{ClipboardTag, ClipboardTagInput, TagStore};

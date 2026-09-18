@@ -2,6 +2,7 @@ import type { TextFormat } from "../text-formatter/types";
 
 export const QUICK_TOOL_IDS = [
   "text-diff",
+  "sequential-paste",
   "json",
   "xml",
   "html",
@@ -15,6 +16,7 @@ export type QuickToolTone = "blue" | "purple" | "orange" | "cyan" | "green";
 
 export type QuickToolLaunch =
   | { readonly kind: "text-diff" }
+  | { readonly kind: "sequential-paste" }
   | { readonly kind: "formatter"; readonly format: TextFormat };
 
 export interface QuickToolDefinition {

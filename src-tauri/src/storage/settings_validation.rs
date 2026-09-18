@@ -13,6 +13,7 @@ pub(super) fn validate_settings(settings: &AppSettings) -> StorageResult {
         settings.next_filter_shortcut.trim(),
         settings.previous_card_shortcut.trim(),
         settings.next_card_shortcut.trim(),
+        settings.sequential_paste_shortcut.trim(),
     ];
     validate_navigation_shortcuts(&navigation_shortcuts)?;
     validate_quick_tool_shortcuts(&navigation_shortcuts, &settings.quick_tool_shortcuts)?;
@@ -25,13 +26,13 @@ fn validate_navigation_shortcuts(shortcuts: &[&str]) -> StorageResult {
         return Err("唤醒快捷键不能为空".to_owned());
     }
     if shortcuts[1..].iter().any(|shortcut| shortcut.is_empty()) {
-        return Err("标签和卡片切换快捷键不能为空".to_owned());
+        return Err("标签、卡片切换和顺序粘贴快捷键不能为空".to_owned());
     }
     if has_duplicate_shortcuts(shortcuts) {
-        return Err("唤醒、标签切换和卡片切换快捷键不能重复".to_owned());
+        return Err("唤醒、标签切换、卡片切换和顺序粘贴快捷键不能重复".to_owned());
     }
     if shortcuts_equal_to_search(shortcuts) {
-        return Err("唤醒、标签和卡片切换快捷键不能使用搜索快捷键 Command+F".to_owned());
+        return Err("唤醒、标签、卡片切换和顺序粘贴不能使用搜索快捷键 Command+F".to_owned());
     }
     Ok(())
 }
@@ -61,7 +62,7 @@ fn validate_quick_tool_shortcuts(
             .iter()
             .any(|navigation| shortcuts_equal(shortcut, navigation))
     }) {
-        return Err("快捷工具快捷键不能与唤醒、标签或卡片切换快捷键重复".to_owned());
+        return Err("快捷工具快捷键不能与唤醒、标签、卡片切换或顺序粘贴快捷键重复".to_owned());
     }
     Ok(())
 }
@@ -144,5 +145,15 @@ mod tests {
         let mut settings = AppSettings::default();
         settings.quick_tool_shortcuts = (1..=5).map(|index| format!("Shift+Alt+{index}")).collect();
         assert!(validate_settings(&settings).is_ok());
+    }
+
+    #[test]
+    fn sequential_paste_shortcut_must_be_present_and_unique() {
+        let mut settings = AppSettings::default();
+        settings.sequential_paste_shortcut.clear();
+        assert!(validate_settings(&settings).is_err());
+
+        settings.sequential_paste_shortcut = settings.quick_tool_shortcuts[0].clone();
+        assert!(validate_settings(&settings).is_err());
     }
 }

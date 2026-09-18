@@ -5,7 +5,7 @@ pub(crate) use super::generic::{
     open_accessibility_settings, request_accessibility_permission, show_help_window,
     MAIN_PANEL_INITIAL_HEIGHT, MAIN_PANEL_INITIAL_WIDTH,
 };
-use super::{main_panel_layout, PasteTargetState, MAIN_PANEL_LABEL};
+use super::{main_panel_layout, PasteTargetState};
 use std::time::Duration;
 use tauri::{
     image::Image,
@@ -83,14 +83,13 @@ pub(crate) fn remember_frontmost_application(app_handle: &AppHandle) -> Result<(
         return Err("failed to identify the foreground Windows application".to_owned());
     }
 
-    let main_window = app_handle
-        .get_webview_window(MAIN_PANEL_LABEL)
-        .ok_or_else(|| "failed to find main window".to_owned())?;
-    let main_window_handle = main_window
-        .hwnd()
-        .map_err(|error| format!("failed to get the main panel HWND: {error}"))?;
-    if target_window == main_window_handle {
-        return Err("the main panel cannot be used as its own paste target".to_owned());
+    for window in app_handle.webview_windows().values() {
+        let app_window = window
+            .hwnd()
+            .map_err(|error| format!("failed to read a PTools window HWND: {error}"))?;
+        if target_window == app_window {
+            return Err("PTools 窗口不能作为顺序粘贴的目标".to_owned());
+        }
     }
 
     let identifier = target_window.0 as isize;

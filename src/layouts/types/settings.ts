@@ -11,6 +11,7 @@ export interface AppSettings {
   readonly nextFilterShortcut: string;
   readonly previousCardShortcut: string;
   readonly nextCardShortcut: string;
+  readonly sequentialPasteShortcut: string;
   readonly quickToolIds: readonly QuickToolId[];
   readonly quickToolShortcuts: readonly string[];
   readonly showFormatFilters: boolean;
@@ -29,6 +30,7 @@ export type PasteFlowShortcutSettings = Pick<
   | "nextFilterShortcut"
   | "previousCardShortcut"
   | "nextCardShortcut"
+  | "sequentialPasteShortcut"
   | "quickToolShortcuts"
 >;
 

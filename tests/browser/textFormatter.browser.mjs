@@ -97,3 +97,38 @@ export async function runTextFormatterKeyboardChecks() {
     window.__TAURI_INTERNALS__ = previous;
   }
 }
+
+export async function runEmptyTextFormatterChecks() {
+  const previous = window.__TAURI_INTERNALS__;
+  const initialErrorCount = document.querySelectorAll(".el-message--error").length;
+  window.__TAURI_INTERNALS__ = {
+    metadata: { currentWindow: { label: "empty-text-formatter-browser-test" } },
+    transformCallback: () => 1,
+    invoke: async (command) => {
+      if (command === "get_text_formatter_input") {
+        return { format: "json", content: "", updatedAt: 0 };
+      }
+      if (command === "get_text_formatter_pinned") return false;
+      throw new Error(`Unexpected native call: ${command}`);
+    },
+  };
+  const host = document.createElement("div");
+  host.style.cssText = "position:fixed;inset:0;width:760px;height:600px;z-index:999";
+  document.body.append(host);
+  const app = createApp(TextFormatterWorkspace, { windowId: "empty-text-formatter-browser-test" });
+  try {
+    app.mount(host);
+    await waitFor(() => host.querySelector(".cm-content"), "empty formatter editor did not initialize");
+    assert(host.querySelector(".cm-content").textContent === "", "empty formatter did not stay empty");
+    assert(
+      document.querySelectorAll(".el-message--error").length === initialErrorCount,
+      "empty formatter input raised an initialization error",
+    );
+    return { passed: true, content: "" };
+  } finally {
+    app.unmount();
+    host.remove();
+    await nextTick();
+    window.__TAURI_INTERNALS__ = previous;
+  }
+}

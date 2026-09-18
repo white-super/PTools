@@ -6,6 +6,7 @@ import ShortcutHelp from "./layouts/pages/ShortcutHelp.vue";
 
 const TextFormatter = () => import("./layouts/pages/TextFormatter.vue");
 const TextDiff = () => import("./layouts/pages/TextDiff.vue");
+const SequentialPaste = () => import("./layouts/pages/SequentialPaste.vue");
 
 const routes: Array<RouteRecordRaw> = [
     { path: "/", component: Main },
@@ -13,6 +14,7 @@ const routes: Array<RouteRecordRaw> = [
     { path: '/shortcut-help', component: ShortcutHelp },
     { path: '/formatter', component: TextFormatter },
     { path: '/diff', component: TextDiff },
+    { path: '/sequential-paste', component: SequentialPaste },
 ];
 
 const router = createRouter({

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, shallowRef, useTemplateRef } from "vue";
-import { invoke } from "@tauri-apps/api/core";
 import CardContextMenu from "../components/CardContextMenu.vue";
 import CardNotice from "../components/PasteCard/CardNotice.vue";
 import ClipboardFilterBar from "../components/ClipboardFilterBar.vue";
@@ -14,6 +13,7 @@ import { useClipboardHistoryQuery } from "../composables/useClipboardHistoryQuer
 import { useClipboardTagActions } from "../composables/useClipboardTagActions";
 import { useCardContextMenu } from "../composables/useCardContextMenu";
 import { usePanelNotice } from "../composables/usePanelNotice";
+import { usePanelWindowActions } from "../composables/usePanelWindowActions";
 import { usePanelDismissal } from "../composables/usePanelDismissal";
 import { usePanelEmptyState } from "../composables/usePanelEmptyState";
 import { usePasteFlowKeyboard } from "../composables/usePasteFlowKeyboard";
@@ -40,8 +40,8 @@ const {
   updateTag,
 } = useClipboardHistory();
 const { notice: panelNotice, reportError: reportPanelError, clearNotice } = usePanelNotice();
-const { openTextFormatter, openTextFormatterWithFormat } = useTextFormatterLauncher(
-  (error, card) => reportPanelError("open text formatter", error, card.id),
+const { openEmptyTextFormatter, openTextFormatter, openTextFormatterWithFormat } = useTextFormatterLauncher(
+  (error, card) => reportPanelError("open text formatter", error, card?.id),
 );
 const { pending: diffPending, busy: diffBusy, select: selectDiff, cancel: cancelDiff, openEmptyTextDiff } = useTextDiffLauncher(
   (error, card) => reportPanelError(card ? "select diff source" : "open empty text diff", error, card?.id),
@@ -97,15 +97,11 @@ function closeMenus() {
   filterBar.value?.closeMenus();
 }
 
-async function openSettings() {
-  closeMenus();
-  try {
-    await invoke("show_settings_window");
-    searchQuery.value = "";
-  } catch (error) {
-    reportPanelError("open settings", error);
-  }
-}
+const { openSequentialPaste, openSettings } = usePanelWindowActions({
+  closeMenus,
+  clearSearch: () => { searchQuery.value = ""; },
+  reportError: (action, error) => reportPanelError(action, error),
+});
 
 function handleCardContextMenu(card: ClipboardHistoryEntry, event: MouseEvent) {
   selectedCardId.value = card.id;
@@ -185,7 +181,8 @@ async function handleSearchSubmit() {
 
 const {
   activeToolIds,
-  executeTool,
+  executeEmptyTool,
+  executeSelectedTool,
   isSaving: isSavingToolOrder,
   saveToolOrder,
   toolIds,
@@ -197,6 +194,8 @@ const {
   saveToolIds: updateQuickToolIds,
   closeMenus,
   openTextDiff: () => { cancelDiff(); void openEmptyTextDiff(); },
+  openSequentialPaste: () => { void openSequentialPaste(); },
+  openEmptyTextFormatter,
   openTextFormatter: openTextFormatterWithFormat,
   reportError: (error, cardId) => reportPanelError("operate quick tools", error, cardId),
 });
@@ -214,7 +213,7 @@ const { selectCard } = usePasteFlowKeyboard({
     shortcutSettings: settings,
   },
   focusSearch: () => searchInput.value?.focus(),
-  quickTools: { toolIds, shortcuts: toolShortcuts, execute: executeTool },
+  quickTools: { toolIds, shortcuts: toolShortcuts, execute: executeSelectedTool },
   formatCard: openTextFormatter,
   diffCard: (card) => { void selectDiff(card); },
   pasteCard: (card) => void handlePaste(card),
@@ -253,7 +252,7 @@ usePanelDismissal({ beforeDismiss: () => { closeMenus(); cancelDiff(); clearNoti
         :tool-shortcuts="toolShortcuts"
         :active-tool-ids="activeToolIds"
         :saving-tool-order="isSavingToolOrder"
-        @execute-tool="executeTool"
+        @execute-tool="executeEmptyTool"
         @tool-order-change="saveToolOrder"
         @tool-error="reportPanelError('arrange quick tools', $event)"
         @settings="openSettings"

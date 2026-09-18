@@ -3,4 +3,7 @@ pub mod formatter_window;
 pub mod handle;
 pub mod help_window;
 pub mod main_panel_shortcuts;
+pub mod sequential_paste;
+pub mod sequential_paste_shortcut;
+pub mod sequential_paste_window;
 pub mod window_task;

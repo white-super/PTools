@@ -6,6 +6,7 @@ mod diff_commands;
 mod formatter_commands;
 mod help_commands;
 mod platform;
+mod sequential_paste_commands;
 mod settings_commands;
 mod storage;
 mod system_permissions;
@@ -16,6 +17,8 @@ pub fn run() {
         .manage(platform::PasteTargetState::default())
         .manage(platform::MainPanelState::default())
         .manage(core::main_panel_shortcuts::MainPanelShortcutState::default())
+        .manage(core::sequential_paste::SequentialPasteState::default())
+        .manage(core::sequential_paste_shortcut::SequentialPasteShortcutState::default())
         .enable_macos_default_menu(false);
     let builder = builder
         .setup(|app| {
@@ -46,6 +49,15 @@ pub fn run() {
             formatter_commands::get_text_formatter_input,
             formatter_commands::get_text_formatter_pinned,
             formatter_commands::set_text_formatter_pinned,
+            sequential_paste_commands::show_sequential_paste,
+            sequential_paste_commands::get_sequential_paste_state,
+            sequential_paste_commands::set_sequential_paste_mode,
+            sequential_paste_commands::set_sequential_paste_direction,
+            sequential_paste_commands::reorder_sequential_paste,
+            sequential_paste_commands::remove_sequential_paste_item,
+            sequential_paste_commands::clear_sequential_paste,
+            sequential_paste_commands::close_sequential_paste,
+            sequential_paste_commands::write_clipboard_entry,
             help_commands::show_shortcut_help,
             help_commands::hide_shortcut_help,
             settings_commands::get_app_settings,
@@ -86,6 +98,7 @@ fn set_up(app: &mut App) -> Result<(), String> {
     app.manage(core::diff_window::DiffState::default());
     core::handle::Handle::create_main_window(app)?;
     core::help_window::create(app)?;
+    core::sequential_paste_window::create(app)?;
     core::handle::Handle::create_setting_window(app)?;
     core::handle::Handle::register_shortcuts(app, &settings.main_shortcut)?;
     core::handle::Handle::create_tray_icon(app)?;

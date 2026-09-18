@@ -91,14 +91,6 @@ function toggleTool(toolId: QuickToolId) {
   }
 }
 
-function removeDraggedTool() {
-  const toolId = draggedToolId.value;
-  if (toolId && props.toolIds.includes(toolId)) {
-    applyOrderChange(removeQuickTool(props.toolIds, toolId));
-  }
-  resetDrag();
-}
-
 function execute(toolId: QuickToolId) {
   closeManager();
   emit("execute", toolId);
@@ -171,7 +163,6 @@ onUnmounted(() => document.removeEventListener("pointerdown", handleOutsidePoint
       @toggle="toggleTool"
       @drag-start="startDrag"
       @drag-end="resetDrag"
-      @remove-drop="removeDraggedTool"
     />
   </div>
 </template>

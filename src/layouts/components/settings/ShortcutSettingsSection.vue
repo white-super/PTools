@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { MAX_QUICK_TOOLS } from "../../features/quick-tools/quickToolOrder";
+import { formatQuickToolShortcut } from "../../features/quick-tools/quickToolShortcut";
 import type { AppSettings } from "../../types/settings";
 import ShortcutCaptureRow from "./ShortcutCaptureRow.vue";
 
@@ -10,7 +11,8 @@ type ShortcutField =
   | "previousFilterShortcut"
   | "nextFilterShortcut"
   | "previousCardShortcut"
-  | "nextCardShortcut";
+  | "nextCardShortcut"
+  | "sequentialPasteShortcut";
 
 function settingField(key: ShortcutField) {
   return computed({
@@ -26,6 +28,7 @@ const previousFilterShortcut = settingField("previousFilterShortcut");
 const nextFilterShortcut = settingField("nextFilterShortcut");
 const previousCardShortcut = settingField("previousCardShortcut");
 const nextCardShortcut = settingField("nextCardShortcut");
+const sequentialPasteShortcut = settingField("sequentialPasteShortcut");
 
 function updateQuickToolShortcut(index: number, value: string) {
   const quickToolShortcuts = [...settings.value.quickToolShortcuts];
@@ -62,9 +65,15 @@ function updateQuickToolShortcut(index: number, value: string) {
       description="向右选择卡片，也可以使用右方向键"
     />
     <ShortcutCaptureRow
+      v-model="sequentialPasteShortcut"
+      title="顺序粘贴快捷键"
+      description="粘贴模式下依次粘贴并移除队列内容"
+    />
+    <ShortcutCaptureRow
       v-for="shortcutIndex in MAX_QUICK_TOOLS"
       :key="shortcutIndex"
       :model-value="settings.quickToolShortcuts[shortcutIndex - 1]"
+      :display-value="formatQuickToolShortcut(settings.quickToolShortcuts[shortcutIndex - 1])"
       :title="`快捷工具 ${shortcutIndex}`"
       :description="`执行工具栏第 ${shortcutIndex} 个工具，排序后仍按位置生效`"
       @update:model-value="updateQuickToolShortcut(shortcutIndex - 1, $event)"

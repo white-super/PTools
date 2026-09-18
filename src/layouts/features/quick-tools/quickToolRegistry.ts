@@ -3,14 +3,15 @@ import { QUICK_TOOL_IDS } from "./types";
 
 export const DEFAULT_QUICK_TOOL_IDS: readonly QuickToolId[] = [
   "text-diff",
+  "sequential-paste",
   "json",
   "url",
   "base64",
-  "date",
 ];
 
 export const QUICK_TOOL_DEFINITIONS: readonly QuickToolDefinition[] = [
   { id: "text-diff", label: "文本对比", tone: "blue", launch: { kind: "text-diff" } },
+  { id: "sequential-paste", label: "顺序粘贴", tone: "green", launch: { kind: "sequential-paste" } },
   { id: "json", label: "JSON 格式化", tone: "orange", launch: { kind: "formatter", format: "json" } },
   { id: "xml", label: "XML 格式化", tone: "purple", launch: { kind: "formatter", format: "xml" } },
   { id: "html", label: "HTML 格式化", tone: "cyan", launch: { kind: "formatter", format: "html" } },

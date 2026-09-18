@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import QuickToolIcon from "./QuickToolIcon.vue";
 import { MAX_QUICK_TOOLS } from "../quickToolOrder";
+import { formatQuickToolShortcut } from "../quickToolShortcut";
 import type { QuickToolDefinition, QuickToolId } from "../types";
 
 interface Props {
@@ -16,18 +17,19 @@ const emit = defineEmits<{
   toggle: [toolId: QuickToolId];
   dragStart: [toolId: QuickToolId, event: DragEvent];
   dragEnd: [];
-  removeDrop: [];
 }>();
 
 function shortcutForTool(toolId: QuickToolId) {
   const index = props.selectedToolIds.indexOf(toolId);
-  return index < 0 ? undefined : props.shortcuts[index];
+  const shortcut = props.shortcuts[index];
+  return index < 0 || !shortcut ? undefined : formatQuickToolShortcut(shortcut);
 }
 
 function isAddDisabled(toolId: QuickToolId) {
   return props.saving
     || (!props.selectedToolIds.includes(toolId) && props.selectedToolIds.length >= MAX_QUICK_TOOLS);
 }
+
 </script>
 
 <template>
@@ -60,14 +62,6 @@ function isAddDisabled(toolId: QuickToolId) {
         <span class="manager-label">{{ tool.label }}</span>
         <kbd v-if="shortcutForTool(tool.id)" class="manager-shortcut">{{ shortcutForTool(tool.id) }}</kbd>
       </button>
-    </div>
-    <div
-      v-if="props.draggedToolId && props.selectedToolIds.includes(props.draggedToolId)"
-      class="manager-remove-zone"
-      @dragover.prevent
-      @drop.prevent="emit('removeDrop')"
-    >
-      拖到这里移除
     </div>
   </section>
 </template>
@@ -154,16 +148,4 @@ function isAddDisabled(toolId: QuickToolId) {
 
 .manager-label { overflow: hidden; font-size: 11px; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .manager-shortcut { border: 0; color: var(--app-muted); background: transparent; font: 9px ui-monospace, monospace; }
-
-.manager-remove-zone {
-  display: flex;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed var(--app-danger);
-  border-radius: 7px;
-  color: var(--app-danger);
-  background: var(--app-danger-hover);
-  font-size: 11px;
-}
 </style>

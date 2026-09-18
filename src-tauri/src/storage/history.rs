@@ -17,7 +17,7 @@ pub use query::{ClipboardHistoryPage, ClipboardHistoryQuery};
 pub(super) const HISTORY_DATABASE_FILE_NAME: &str = "history.sqlite";
 const SECONDS_PER_DAY: i64 = 86_400;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ClipboardFormat {
     Text,
@@ -44,7 +44,7 @@ impl ClipboardFormat {
     }
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ClipboardHistoryInput {
     pub format: ClipboardFormat,
@@ -54,7 +54,7 @@ pub struct ClipboardHistoryInput {
 }
 
 impl ClipboardHistoryInput {
-    fn validate(&self) -> StorageResult {
+    pub(crate) fn validate(&self) -> StorageResult {
         if self.content.is_empty() {
             return Err("剪贴板内容不能为空".to_owned());
         }

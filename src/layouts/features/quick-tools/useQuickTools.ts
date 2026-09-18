@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { computed, onMounted, onUnmounted, readonly, shallowRef, type Ref } from "vue";
 import type { AppSettings, ClipboardHistoryEntry } from "../../types/settings";
+import type { TextFormat } from "../text-formatter/types";
 import { DEFAULT_QUICK_TOOL_IDS, getQuickToolDefinition } from "./quickToolRegistry";
 import { validateQuickToolOrder } from "./quickToolOrder";
 import { DEFAULT_QUICK_TOOL_SHORTCUTS } from "./quickToolShortcut";
@@ -17,7 +18,9 @@ interface UseQuickToolsOptions {
   readonly saveToolIds: (toolIds: readonly QuickToolId[]) => Promise<void>;
   readonly closeMenus: () => void;
   readonly openTextDiff: () => void;
-  readonly openTextFormatter: (card: ClipboardHistoryEntry, format: Exclude<QuickToolId, "text-diff">) => void;
+  readonly openSequentialPaste: () => void;
+  readonly openEmptyTextFormatter: (format: TextFormat) => void;
+  readonly openTextFormatter: (card: ClipboardHistoryEntry, format: TextFormat) => void;
   readonly reportError: (error: unknown, cardId?: number) => void;
 }
 
@@ -59,11 +62,29 @@ export function useQuickTools(options: UseQuickToolsOptions) {
       ?? options.cards.value[0];
   }
 
-  function executeTool(toolId: QuickToolId) {
+  function executeEmptyTool(toolId: QuickToolId) {
     const tool = getQuickToolDefinition(toolId);
     options.closeMenus();
     if (tool.launch.kind === "text-diff") {
       options.openTextDiff();
+      return;
+    }
+    if (tool.launch.kind === "sequential-paste") {
+      options.openSequentialPaste();
+      return;
+    }
+    options.openEmptyTextFormatter(tool.launch.format);
+  }
+
+  function executeSelectedTool(toolId: QuickToolId) {
+    const tool = getQuickToolDefinition(toolId);
+    options.closeMenus();
+    if (tool.launch.kind === "text-diff") {
+      options.openTextDiff();
+      return;
+    }
+    if (tool.launch.kind === "sequential-paste") {
+      options.openSequentialPaste();
       return;
     }
     const card = selectedCard();
@@ -84,7 +105,7 @@ export function useQuickTools(options: UseQuickToolsOptions) {
     }
     const toolId = toolIds.value[index];
     if (toolId) {
-      executeTool(toolId);
+      executeSelectedTool(toolId);
     }
   }
 
@@ -118,7 +139,8 @@ export function useQuickTools(options: UseQuickToolsOptions) {
 
   return {
     activeToolIds: readonly(activeToolIds),
-    executeTool,
+    executeEmptyTool,
+    executeSelectedTool,
     isSaving: readonly(isSaving),
     saveToolOrder,
     toolIds,

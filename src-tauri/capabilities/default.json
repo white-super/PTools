@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "setting", "shortcut-help", "text-formatter-*"],
+  "windows": ["main", "setting", "shortcut-help", "text-formatter-*", "sequential-paste"],
   "permissions": [
     "core:default",
     "opener:default",

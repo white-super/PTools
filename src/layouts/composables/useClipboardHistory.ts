@@ -6,9 +6,6 @@ import {
   onImageUpdate,
   onTextUpdate,
   startListening,
-  writeFiles,
-  writeImageBase64,
-  writeText,
 } from "tauri-plugin-clipboard-api";
 import type {
   AppSettings,
@@ -143,13 +140,13 @@ export function useClipboardHistory() {
   }
 
   async function writeToClipboard(card: ClipboardHistoryEntry) {
-    if (card.format === "text") {
-      return writeText(card.content);
-    }
-    if (card.format === "image") {
-      return writeImageBase64(card.content);
-    }
-    return writeFiles([...card.filePaths]);
+    return invoke("write_clipboard_entry", {
+      entry: {
+        format: card.format,
+        content: card.content,
+        filePaths: [...card.filePaths],
+      },
+    });
   }
 
   async function hidePanel() {

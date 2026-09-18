@@ -17,6 +17,14 @@ test("quick tools can be added, moved and removed without mutating the source", 
   assert.deepEqual(original, ["text-diff", "json", "url"]);
 });
 
+test("sequential paste participates in quick tool ordering", () => {
+  assert.deepEqual(
+    order.placeQuickTool(["text-diff", "json"], "sequential-paste", 1),
+    ["text-diff", "sequential-paste", "json"],
+  );
+  assert.doesNotThrow(() => order.validateQuickToolOrder(["sequential-paste"]));
+});
+
 test("quick tool order rejects overflow, duplicates and unknown tools", () => {
   assert.throws(
     () => order.placeQuickTool(["text-diff", "json", "xml", "html", "url"], "base64", 5),
@@ -74,4 +82,10 @@ test("quick tool shortcuts support custom keys and Alt/Option aliases", () => {
     shortcuts.quickToolIndexFromKeyboard(event, ["Ctrl+1", "Alt+Q"]),
     undefined,
   );
+});
+
+test("quick tool shortcuts use compact cmd labels without changing stored values", () => {
+  assert.equal(shortcuts.formatQuickToolShortcut("Command+1"), "cmd+1");
+  assert.equal(shortcuts.formatQuickToolShortcut("Shift+Command+2"), "Shift+cmd+2");
+  assert.equal(shortcuts.formatQuickToolShortcut("Ctrl+3"), "Ctrl+3");
 });

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { formatQuickToolShortcut } from "../features/quick-tools/quickToolShortcut";
 import type { PasteFlowShortcutSettings } from "../types/settings";
 
 interface Props {
@@ -11,14 +12,15 @@ const emit = defineEmits<{ close: [] }>();
 const shortcutSettings = computed(() => props.shortcutSettings);
 
 function quickToolShortcutSummary(shortcuts: readonly string[]) {
-  const parts = shortcuts.map((shortcut) => shortcut.match(/^(.+)\+(\d)$/));
+  const displayedShortcuts = shortcuts.map(formatQuickToolShortcut);
+  const parts = displayedShortcuts.map((shortcut) => shortcut.match(/^(.+)\+(\d)$/));
   const modifier = parts[0]?.[1];
   const isNumberRange = parts.length > 0 && parts.every(
     (part, index) => part !== null
       && part[1] === modifier
       && part[2] === String(index + 1),
   );
-  return isNumberRange ? `${modifier}+1–${parts.length}` : shortcuts.join(" / ");
+  return isNumberRange ? `${modifier}+1–${parts.length}` : displayedShortcuts.join(" / ");
 }
 
 const helpSections = computed(() => [
@@ -35,6 +37,7 @@ const helpSections = computed(() => [
       },
       { label: "使用文本工具", shortcut: "F" },
       { label: "标记 / 对比选中内容", shortcut: "D" },
+      { label: "顺序粘贴下一项", shortcut: shortcutSettings.value.sequentialPasteShortcut },
       { label: "固定格式化窗口", shortcut: "Command+D / Alt+D" },
     ],
   },
@@ -76,7 +79,7 @@ const helpSections = computed(() => [
 .help-card {
   box-sizing: border-box;
   width: 100%;
-  padding: 12px 14px;
+  padding: 8px 12px;
   border: 1px solid var(--app-border);
   border-radius: 10px;
   color: var(--app-text);
@@ -111,18 +114,18 @@ const helpSections = computed(() => [
 }
 
 .help-section {
-  margin-top: 12px;
+  margin-top: 9px;
 }
 
 .help-section-title {
-  margin: 0 0 5px;
+  margin: 0 0 3px;
   color: var(--app-muted);
   font-size: 11px;
   font-weight: 600;
 }
 
 .help-row {
-  min-height: 25px;
+  min-height: 22px;
   font-size: 12px;
 }
 
@@ -138,7 +141,7 @@ const helpSections = computed(() => [
 }
 
 .help-note {
-  margin: 10px 0 0;
+  margin: 7px 0 0;
   color: var(--app-muted);
   font-size: 11px;
 }

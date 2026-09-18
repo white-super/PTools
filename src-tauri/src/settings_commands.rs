@@ -4,6 +4,8 @@ use crate::{
         formatter_window::{TextFormat, TextFormatterState},
         handle::Handle,
         main_panel_shortcuts,
+        sequential_paste::SequentialPasteState,
+        sequential_paste_shortcut,
     },
     storage::{
         AppSettings, ClipboardHistoryInput, ClipboardHistoryPage, ClipboardHistoryQuery,
@@ -56,6 +58,13 @@ pub fn get_active_quick_tools(app_handle: AppHandle) -> CmdResult<Vec<QuickToolI
     if app_handle.state::<DiffState>().has_windows()? {
         tool_ids.push(QuickToolId::TextDiff);
     }
+    if app_handle
+        .state::<SequentialPasteState>()
+        .snapshot()
+        .enabled
+    {
+        tool_ids.push(QuickToolId::SequentialPaste);
+    }
     tool_ids.sort();
     tool_ids.dedup();
     Ok(tool_ids)
@@ -81,6 +90,12 @@ pub async fn get_clipboard_history(
 
 #[tauri::command]
 pub fn record_clipboard_history(app_handle: AppHandle, entry: ClipboardHistoryInput) -> CmdResult {
+    entry.validate()?;
+    let sequential_state = app_handle.state::<SequentialPasteState>();
+    let internal_write = sequential_state.consume_internal_write(&entry);
+    if !internal_write && sequential_state.capture(entry.clone()) {
+        crate::sequential_paste_commands::emit_state(&app_handle)?;
+    }
     let settings = app_handle.state::<SettingsState>().get()?;
     app_handle
         .state::<HistoryStore>()
@@ -155,27 +170,18 @@ pub fn get_history_stats(app_handle: AppHandle) -> CmdResult<HistoryStats> {
 
 fn apply_settings(app_handle: &AppHandle, settings: AppSettings) -> CmdResult<AppSettings> {
     settings.validate()?;
+    // Serialize shortcut replacement with sequential paste mode changes and shutdown.
+    let sequential_state = app_handle.state::<SequentialPasteState>();
+    let _sequential_operation = sequential_state.lock_operation();
     let settings_state = app_handle.state::<SettingsState>();
     let current_settings = settings_state.get()?;
-    let shortcut_changed = current_settings.main_shortcut != settings.main_shortcut;
-    if shortcut_changed {
-        Handle::replace_main_shortcut(
-            app_handle,
-            &current_settings.main_shortcut,
-            &settings.main_shortcut,
-        )?;
-    }
-
+    replace_settings_shortcuts(app_handle, &current_settings, &settings)?;
     let settings_store = app_handle.state::<SettingsStore>();
     if let Err(error) = settings_store.save(&settings) {
-        if shortcut_changed {
-            Handle::replace_main_shortcut(
-                app_handle,
-                &settings.main_shortcut,
-                &current_settings.main_shortcut,
-            )?;
-        }
-        return Err(error);
+        return Err(with_shortcut_rollback(
+            error,
+            replace_settings_shortcuts(app_handle, &settings, &current_settings),
+        ));
     }
 
     settings_state.replace(settings.clone())?;
@@ -187,6 +193,44 @@ fn apply_settings(app_handle: &AppHandle, settings: AppSettings) -> CmdResult<Ap
     emit_history_update(app_handle)?;
     emit_settings_update(app_handle, &settings)?;
     Ok(settings)
+}
+
+fn replace_settings_shortcuts(
+    app_handle: &AppHandle,
+    current: &AppSettings,
+    next: &AppSettings,
+) -> CmdResult {
+    let main_changed = current.main_shortcut != next.main_shortcut;
+    if main_changed {
+        Handle::replace_main_shortcut(app_handle, &current.main_shortcut, &next.main_shortcut)?;
+    }
+    if current.sequential_paste_shortcut == next.sequential_paste_shortcut {
+        return Ok(());
+    }
+    if let Err(error) = sequential_paste_shortcut::replace_if_registered(
+        app_handle,
+        &current.sequential_paste_shortcut,
+        &next.sequential_paste_shortcut,
+    ) {
+        let rollback = main_changed.then(|| {
+            Handle::replace_main_shortcut(app_handle, &next.main_shortcut, &current.main_shortcut)
+        });
+        return Err(with_optional_shortcut_rollback(error, rollback));
+    }
+    Ok(())
+}
+
+fn with_optional_shortcut_rollback(error: String, rollback: Option<CmdResult>) -> String {
+    rollback.map_or(error.clone(), |result| {
+        with_shortcut_rollback(error, result)
+    })
+}
+
+fn with_shortcut_rollback(error: String, rollback: CmdResult) -> String {
+    match rollback {
+        Ok(()) => error,
+        Err(rollback_error) => format!("{error}; failed to restore shortcuts: {rollback_error}"),
+    }
 }
 
 fn emit_settings_update(app_handle: &AppHandle, settings: &AppSettings) -> CmdResult {

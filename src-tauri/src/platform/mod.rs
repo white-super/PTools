@@ -60,7 +60,7 @@ fn contains_cursor(monitor: &Monitor, cursor_position: PhysicalPosition<f64>) ->
         && cursor_position.y < monitor_bottom
 }
 
-fn monitor_for_cursor(
+pub(crate) fn monitor_for_cursor(
     window: &WebviewWindow,
     cursor_position: PhysicalPosition<f64>,
 ) -> Result<Monitor, String> {

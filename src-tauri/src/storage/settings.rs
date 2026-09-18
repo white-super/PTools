@@ -10,6 +10,7 @@ const DEFAULT_PREVIOUS_FILTER_SHORTCUT: &str = "Ctrl+Q";
 const DEFAULT_NEXT_FILTER_SHORTCUT: &str = "Ctrl+E";
 const DEFAULT_PREVIOUS_CARD_SHORTCUT: &str = "Ctrl+A";
 const DEFAULT_NEXT_CARD_SHORTCUT: &str = "Ctrl+D";
+const DEFAULT_SEQUENTIAL_PASTE_SHORTCUT: &str = "Ctrl+Shift+V";
 const DEFAULT_HISTORY_RETENTION_DAYS: u32 = 30;
 const DEFAULT_MAX_HISTORY_ENTRIES: u32 = 200;
 pub(super) const MAX_QUICK_TOOLS: usize = 5;
@@ -22,6 +23,13 @@ const DEFAULT_QUICK_TOOL_SHORTCUTS: [&str; MAX_QUICK_TOOLS] = [
 ];
 const LEGACY_QUICK_TOOL_SHORTCUTS: [&str; MAX_QUICK_TOOLS] =
     ["Alt+1", "Alt+2", "Alt+3", "Alt+4", "Alt+5"];
+const LEGACY_DEFAULT_QUICK_TOOL_IDS: [QuickToolId; MAX_QUICK_TOOLS] = [
+    QuickToolId::TextDiff,
+    QuickToolId::Json,
+    QuickToolId::Url,
+    QuickToolId::Base64,
+    QuickToolId::Date,
+];
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -36,6 +44,7 @@ pub enum AppTheme {
 #[serde(rename_all = "kebab-case")]
 pub enum QuickToolId {
     TextDiff,
+    SequentialPaste,
     Json,
     Xml,
     Html,
@@ -58,6 +67,8 @@ pub struct AppSettings {
     pub previous_card_shortcut: String,
     #[serde(default = "default_next_card_shortcut")]
     pub next_card_shortcut: String,
+    #[serde(default = "default_sequential_paste_shortcut")]
+    pub sequential_paste_shortcut: String,
     #[serde(default = "default_quick_tool_ids")]
     pub quick_tool_ids: Vec<QuickToolId>,
     #[serde(default = "default_quick_tool_shortcuts")]
@@ -81,6 +92,7 @@ impl Default for AppSettings {
             next_filter_shortcut: default_next_filter_shortcut(),
             previous_card_shortcut: default_previous_card_shortcut(),
             next_card_shortcut: default_next_card_shortcut(),
+            sequential_paste_shortcut: default_sequential_paste_shortcut(),
             quick_tool_ids: default_quick_tool_ids(),
             quick_tool_shortcuts: default_quick_tool_shortcuts(),
             show_format_filters: false,
@@ -116,13 +128,17 @@ fn default_next_card_shortcut() -> String {
     DEFAULT_NEXT_CARD_SHORTCUT.to_owned()
 }
 
+fn default_sequential_paste_shortcut() -> String {
+    DEFAULT_SEQUENTIAL_PASTE_SHORTCUT.to_owned()
+}
+
 fn default_quick_tool_ids() -> Vec<QuickToolId> {
     vec![
         QuickToolId::TextDiff,
+        QuickToolId::SequentialPaste,
         QuickToolId::Json,
         QuickToolId::Url,
         QuickToolId::Base64,
-        QuickToolId::Date,
     ]
 }
 
@@ -144,6 +160,14 @@ fn migrate_legacy_quick_tool_shortcuts(settings: &mut AppSettings) -> bool {
         return false;
     }
     settings.quick_tool_shortcuts = default_quick_tool_shortcuts();
+    true
+}
+
+fn migrate_legacy_default_quick_tools(settings: &mut AppSettings) -> bool {
+    if settings.quick_tool_ids != LEGACY_DEFAULT_QUICK_TOOL_IDS {
+        return false;
+    }
+    settings.quick_tool_ids = default_quick_tool_ids();
     true
 }
 
@@ -175,7 +199,8 @@ impl SettingsStore {
             .map_err(|error| format!("failed to read settings file: {error}"))?;
         let mut settings = serde_json::from_str::<AppSettings>(&contents)
             .map_err(|error| format!("failed to parse settings file: {error}"))?;
-        let migrated = migrate_legacy_quick_tool_shortcuts(&mut settings);
+        let migrated = migrate_legacy_quick_tool_shortcuts(&mut settings)
+            | migrate_legacy_default_quick_tools(&mut settings);
         settings.validate()?;
         if migrated {
             self.save(&settings)?;
@@ -221,79 +246,4 @@ impl SettingsState {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{
-        default_quick_tool_shortcuts, migrate_legacy_quick_tool_shortcuts, AppSettings, QuickToolId,
-    };
-
-    #[test]
-    fn default_main_shortcut_matches_the_current_platform() {
-        assert_eq!(
-            AppSettings::default().main_shortcut,
-            crate::platform::DEFAULT_MAIN_SHORTCUT
-        );
-    }
-
-    #[test]
-    fn settings_without_quick_tools_receive_the_default_order() {
-        let mut value = serde_json::to_value(AppSettings::default()).unwrap();
-        value.as_object_mut().unwrap().remove("quickToolIds");
-        let settings = serde_json::from_value::<AppSettings>(value).unwrap();
-        assert_eq!(
-            settings.quick_tool_ids,
-            vec![
-                QuickToolId::TextDiff,
-                QuickToolId::Json,
-                QuickToolId::Url,
-                QuickToolId::Base64,
-                QuickToolId::Date,
-            ]
-        );
-    }
-
-    #[test]
-    fn settings_without_quick_tool_shortcuts_receive_command_defaults() {
-        let mut value = serde_json::to_value(AppSettings::default()).unwrap();
-        value.as_object_mut().unwrap().remove("quickToolShortcuts");
-        let settings = serde_json::from_value::<AppSettings>(value).unwrap();
-        assert_eq!(
-            settings.quick_tool_shortcuts,
-            vec![
-                "Command+1",
-                "Command+2",
-                "Command+3",
-                "Command+4",
-                "Command+5"
-            ]
-        );
-    }
-
-    #[test]
-    fn quick_tool_ids_use_frontend_names() {
-        assert_eq!(
-            serde_json::to_value(QuickToolId::TextDiff).unwrap(),
-            "text-diff"
-        );
-        assert_eq!(serde_json::to_value(QuickToolId::Base64).unwrap(), "base64");
-    }
-
-    #[test]
-    fn legacy_alt_quick_tool_shortcuts_migrate_to_command_defaults() {
-        let mut settings = AppSettings::default();
-        settings.quick_tool_shortcuts = (1..=5).map(|index| format!("Alt+{index}")).collect();
-        assert!(migrate_legacy_quick_tool_shortcuts(&mut settings));
-        assert_eq!(
-            settings.quick_tool_shortcuts,
-            default_quick_tool_shortcuts()
-        );
-    }
-
-    #[test]
-    fn custom_quick_tool_shortcuts_are_not_migrated() {
-        let mut settings = AppSettings::default();
-        settings.quick_tool_shortcuts[0] = "Alt+Q".to_owned();
-        let original = settings.quick_tool_shortcuts.clone();
-        assert!(!migrate_legacy_quick_tool_shortcuts(&mut settings));
-        assert_eq!(settings.quick_tool_shortcuts, original);
-    }
-}
+mod tests;
