@@ -16,7 +16,7 @@
 
 PTools is a local-first, cross-platform clipboard toolkit that brings history, search, tags, formatting, and text comparison into the copy-and-paste workflow. Clipboard data and tool processing stay on your device and are never uploaded.
 
-> The current source includes features under development for `1.4.0`; the latest stable release is still `1.3.0`. See the [Changelog](CHANGELOG.md) for progress.
+> The latest stable release is `v1.4.0`. See the [Changelog](CHANGELOG.md) for the full release history.
 
 ## Screenshots
 
@@ -109,7 +109,7 @@ A lightweight quick-tool bar sits at the top center of the clipboard panel. By d
 - [ ] **cURL request tool**: Parse cURL text in a dedicated request workspace and inspect responses.
 - [ ] **Image crop tool**: Crop, resize, copy, or save clipboard images.
 
-This is the `1.4.0` development plan. Checked items are available in the current source; unchecked items are not complete, and interactions or shortcuts may still change.
+Checked items shipped in `v1.4.0`; unchecked items remain planned for future releases.
 
 ## How to Use
 
