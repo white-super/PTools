@@ -3454,7 +3454,7 @@ dependencies = [
 
 [[package]]
 name = "ptools"
-version = "1.4.0"
+version = "1.4.1"
 dependencies = [
  "anyhow",
  "cocoa 0.25.0",

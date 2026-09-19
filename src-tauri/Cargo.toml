@@ -1,6 +1,6 @@
 [package]
 name = "ptools"
-version = "1.4.0"
+version = "1.4.1"
 description = "A local-first cross-platform clipboard history app"
 license = "Apache-2.0"
 edition = "2021"

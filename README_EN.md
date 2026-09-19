@@ -16,7 +16,7 @@
 
 PTools is a local-first, cross-platform clipboard toolkit that brings history, search, tags, formatting, and text comparison into the copy-and-paste workflow. Clipboard data and tool processing stay on your device and are never uploaded.
 
-> The latest stable release is `v1.4.0`. See the [Changelog](CHANGELOG.md) for the full release history.
+> The latest stable release is `v1.4.1`. See the [Changelog](CHANGELOG.md) for the full release history.
 
 ## Screenshots
 

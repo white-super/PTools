@@ -2,7 +2,7 @@
   "name": "ptools",
   "description": "A local-first cross-platform clipboard history app",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.4.1",
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
