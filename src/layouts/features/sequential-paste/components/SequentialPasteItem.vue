@@ -16,8 +16,8 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
   dragStart: [event: DragEvent];
   dragEnd: [];
-  dragOver: [after: boolean];
-  drop: [];
+  dragOver: [];
+  drop: [payload: { readonly event: DragEvent; readonly after: boolean }];
   remove: [];
 }>();
 const formatLabel = computed(() => ({ text: "文本", image: "图片", file: "文件" })[props.item.format]);
@@ -39,8 +39,14 @@ const preview = computed(() => {
 function handleDragOver(event: DragEvent) {
   if (!props.editable) return;
   event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+  emit("dragOver");
+}
+
+function handleDrop(event: DragEvent) {
   const row = event.currentTarget as HTMLElement;
-  emit("dragOver", event.clientY > row.getBoundingClientRect().top + row.offsetHeight / 2);
+  const after = event.clientY > row.getBoundingClientRect().top + row.offsetHeight / 2;
+  emit("drop", { event, after });
 }
 </script>
 
@@ -58,7 +64,7 @@ function handleDragOver(event: DragEvent) {
     @dragstart="emit('dragStart', $event)"
     @dragend="emit('dragEnd')"
     @dragover="handleDragOver"
-    @drop.prevent="emit('drop')"
+    @drop.prevent="handleDrop"
   >
     <span v-if="props.editable" class="drag-handle" aria-hidden="true">
       <svg viewBox="0 0 16 16"><circle cx="5" cy="4" r="1" /><circle cx="11" cy="4" r="1" /><circle cx="5" cy="8" r="1" /><circle cx="11" cy="8" r="1" /><circle cx="5" cy="12" r="1" /><circle cx="11" cy="12" r="1" /></svg>

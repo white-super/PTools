@@ -110,8 +110,34 @@ function dragItemAfter(host, sourceId, targetId) {
     clientY: target.getBoundingClientRect().bottom,
     dataTransfer: transfer,
   }));
-  target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: transfer }));
+  target.dispatchEvent(new DragEvent("drop", {
+    bubbles: true,
+    cancelable: true,
+    clientY: target.getBoundingClientRect().bottom,
+    dataTransfer: transfer,
+  }));
   source.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
+}
+
+async function dragItemWithEarlyDragEnd(host, sourceId, targetId) {
+  const source = required(host, `[data-item-id="${sourceId}"]`, "drag source is missing");
+  const target = required(host, `[data-item-id="${targetId}"]`, "drop target is missing");
+  const transfer = new DataTransfer();
+  source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: transfer }));
+  target.dispatchEvent(new DragEvent("dragover", {
+    bubbles: true,
+    cancelable: true,
+    clientY: target.getBoundingClientRect().bottom,
+    dataTransfer: transfer,
+  }));
+  source.dispatchEvent(new DragEvent("dragend", { bubbles: true, dataTransfer: transfer }));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  target.dispatchEvent(new DragEvent("drop", {
+    bubbles: true,
+    cancelable: true,
+    clientY: target.getBoundingClientRect().bottom,
+    dataTransfer: transfer,
+  }));
 }
 
 async function verifyCaptureInteractions(host, context) {
@@ -126,16 +152,24 @@ async function verifyCaptureInteractions(host, context) {
   );
   required(host, '[data-item-id="2"] .remove-button', "remove button is missing").click();
   await waitFor(() => host.querySelectorAll(".queue-item").length === 2, "queue removal failed");
+  await dragItemWithEarlyDragEnd(host, 3, 1);
+  await waitFor(() => context.snapshot.items.map((item) => item.id).join() === "1,3", "early drag-end reorder failed");
+  await waitFor(
+    () => [...host.querySelectorAll(".queue-item")].map((item) => item.dataset.itemId).join() === "1,3",
+    "early drag-end reorder did not render",
+  );
 }
 
-async function verifyPasteInteractions(host) {
+async function verifyPasteInteractions(host, context) {
   required(host, '.mode-switch button[aria-pressed="false"]', "paste mode button is missing").click();
   await waitFor(() => host.querySelector(".direction-switch"), "paste mode did not activate");
-  assert(required(host, '[data-item-id="3"]', "forward item is missing").classList.contains("is-next"), "forward next item is wrong");
+  const firstId = context.snapshot.items[0].id;
+  const lastId = context.snapshot.items.at(-1).id;
+  assert(required(host, `[data-item-id="${firstId}"]`, "forward item is missing").classList.contains("is-next"), "forward next item is wrong");
   const directionButtons = host.querySelectorAll(".direction-switch button");
   assert(directionButtons.length === 2, "direction controls are missing");
   directionButtons[1].click();
-  await waitFor(() => required(host, '[data-item-id="1"]', "reverse item is missing").classList.contains("is-next"), "reverse mode did not activate");
+  await waitFor(() => required(host, `[data-item-id="${lastId}"]`, "reverse item is missing").classList.contains("is-next"), "reverse mode did not activate");
   assert(host.textContent.includes("Ctrl+Shift+V"), "configured shortcut is not shown");
 }
 
@@ -155,7 +189,7 @@ export async function runSequentialPasteBrowserChecks() {
   const view = mountWindow("position:fixed;inset:0;width:320px;height:560px;z-index:999;background:var(--app-background)");
   try {
     await verifyCaptureInteractions(view.host, mock.context);
-    await verifyPasteInteractions(view.host);
+    await verifyPasteInteractions(view.host, mock.context);
     await verifyNativeCompletion(view.host, mock);
     document.documentElement.className = "theme-dark";
     await nextTick();

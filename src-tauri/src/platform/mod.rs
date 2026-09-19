@@ -12,6 +12,8 @@ mod generic;
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(target_os = "macos")]
+mod macos_paste;
+#[cfg(target_os = "macos")]
 mod macos_event_monitor;
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 mod other;

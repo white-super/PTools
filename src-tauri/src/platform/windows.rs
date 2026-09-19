@@ -78,24 +78,43 @@ fn keyboard_input(key: VIRTUAL_KEY, flags: KEYBD_EVENT_FLAGS) -> INPUT {
 }
 
 pub(crate) fn remember_frontmost_application(app_handle: &AppHandle) -> Result<(), String> {
-    let target_window = unsafe { GetForegroundWindow() };
-    if target_window.is_invalid() {
-        return Err("failed to identify the foreground Windows application".to_owned());
+    let target_window = foreground_window()?;
+    if window_belongs_to_ptools(app_handle, target_window)? {
+        return Err("PTools 窗口不能作为顺序粘贴的目标".to_owned());
     }
-
-    for window in app_handle.webview_windows().values() {
-        let app_window = window
-            .hwnd()
-            .map_err(|error| format!("failed to read a PTools window HWND: {error}"))?;
-        if target_window == app_window {
-            return Err("PTools 窗口不能作为顺序粘贴的目标".to_owned());
-        }
-    }
-
     let identifier = target_window.0 as isize;
     app_handle.state::<PasteTargetState>().replace(identifier)?;
     println!("[paste] remembered Windows target HWND: {identifier:#x}");
     Ok(())
+}
+
+pub(crate) fn refresh_paste_target(app_handle: &AppHandle) -> Result<(), String> {
+    let target_window = foreground_window()?;
+    if window_belongs_to_ptools(app_handle, target_window)? {
+        return Ok(());
+    }
+    app_handle
+        .state::<PasteTargetState>()
+        .replace(target_window.0 as isize)
+}
+
+fn foreground_window() -> Result<HWND, String> {
+    let window = unsafe { GetForegroundWindow() };
+    (!window.is_invalid())
+        .then_some(window)
+        .ok_or_else(|| "failed to identify the foreground Windows application".to_owned())
+}
+
+fn window_belongs_to_ptools(app_handle: &AppHandle, target: HWND) -> Result<bool, String> {
+    for window in app_handle.webview_windows().values() {
+        let app_window = window
+            .hwnd()
+            .map_err(|error| format!("failed to read a PTools window HWND: {error}"))?;
+        if target == app_window {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub(crate) fn window_is_foreground(window: &WebviewWindow) -> Result<bool, String> {

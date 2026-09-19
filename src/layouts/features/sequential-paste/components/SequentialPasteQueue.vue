@@ -3,11 +3,18 @@ import { shallowRef } from "vue";
 import SequentialPasteItem from "./SequentialPasteItem.vue";
 import type { SequentialPasteError, SequentialPasteItem as QueueItem } from "../types";
 
+const DRAG_END_GRACE_MS = 250;
+
 interface Props {
   readonly items: readonly QueueItem[];
   readonly editable: boolean;
   readonly nextItemId?: number;
   readonly error?: SequentialPasteError;
+}
+
+interface DropPayload {
+  readonly event: DragEvent;
+  readonly after: boolean;
 }
 
 const props = defineProps<Props>();
@@ -17,43 +24,68 @@ const emit = defineEmits<{
 }>();
 const draggedId = shallowRef<number>();
 const dropTargetId = shallowRef<number>();
-const dropAfter = shallowRef(false);
+let lastDraggedId: number | undefined;
+let dragEndedAt: number | undefined;
 
 function startDrag(itemId: number, event: DragEvent) {
   if (!props.editable) return;
   draggedId.value = itemId;
-  event.dataTransfer?.setData("text/plain", String(itemId));
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+  lastDraggedId = itemId;
+  dragEndedAt = undefined;
+  if (event.dataTransfer) {
+    event.dataTransfer.setData("text/plain", String(itemId));
+    event.dataTransfer.effectAllowed = "move";
+  }
 }
 
-function setDropTarget(itemId: number, after: boolean) {
+function setDropTarget(itemId: number) {
   if (!props.editable || draggedId.value === undefined) return;
   dropTargetId.value = itemId;
-  dropAfter.value = after;
 }
 
-function resetDrag() {
+function resetDragDisplay() {
   draggedId.value = undefined;
   dropTargetId.value = undefined;
-  dropAfter.value = false;
 }
 
-function commitDrop() {
-  const sourceId = draggedId.value;
-  const targetId = dropTargetId.value;
-  if (sourceId === undefined || targetId === undefined || sourceId === targetId) {
-    resetDrag();
+function queueContains(itemId: number | undefined): itemId is number {
+  return itemId !== undefined && props.items.some((item) => item.id === itemId);
+}
+
+function draggedItemId(event: DragEvent) {
+  const transferredId = Number(event.dataTransfer?.getData("text/plain"));
+  if (Number.isSafeInteger(transferredId) && queueContains(transferredId)) return transferredId;
+  if (!queueContains(lastDraggedId)) return undefined;
+  if (dragEndedAt === undefined) return lastDraggedId;
+  return performance.now() - dragEndedAt <= DRAG_END_GRACE_MS ? lastDraggedId : undefined;
+}
+
+function finishDrag() {
+  dragEndedAt = performance.now();
+  resetDragDisplay();
+}
+
+function finishDrop() {
+  lastDraggedId = undefined;
+  dragEndedAt = undefined;
+  resetDragDisplay();
+}
+
+function commitDrop(targetId: number, payload: DropPayload) {
+  const sourceId = draggedItemId(payload.event);
+  if (sourceId === undefined || sourceId === targetId) {
+    finishDrop();
     return;
   }
   const nextIds = props.items.map((item) => item.id).filter((id) => id !== sourceId);
   const targetIndex = nextIds.indexOf(targetId);
   if (targetIndex < 0) {
-    resetDrag();
+    finishDrop();
     return;
   }
-  nextIds.splice(targetIndex + (dropAfter.value ? 1 : 0), 0, sourceId);
+  nextIds.splice(targetIndex + (payload.after ? 1 : 0), 0, sourceId);
   emit("reorder", nextIds);
-  resetDrag();
+  finishDrop();
 }
 
 function itemError(itemId: number) {
@@ -74,9 +106,9 @@ function itemError(itemId: number) {
       :dragging="draggedId === item.id"
       :drop-target="dropTargetId === item.id"
       @drag-start="startDrag(item.id, $event)"
-      @drag-end="resetDrag"
-      @drag-over="setDropTarget(item.id, $event)"
-      @drop="commitDrop"
+      @drag-end="finishDrag"
+      @drag-over="setDropTarget(item.id)"
+      @drop="commitDrop(item.id, $event)"
       @remove="emit('remove', item.id)"
     />
   </ol>

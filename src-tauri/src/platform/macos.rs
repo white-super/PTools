@@ -1,5 +1,5 @@
 use super::{
-    apply_main_panel_layout, MainPanelState, PasteTargetState, MAIN_PANEL_LABEL, WINDOW_MOVED_EVENT,
+    apply_main_panel_layout, MainPanelState, MAIN_PANEL_LABEL, WINDOW_MOVED_EVENT,
     WINDOW_RESIZED_EVENT,
 };
 use core_foundation::{
@@ -26,6 +26,9 @@ pub(crate) const MAIN_PANEL_INITIAL_HEIGHT: f64 = 1.0;
 pub(crate) const TRAY_ICON: Image<'_> = tauri::include_image!("./icons/menu-bar-template.png");
 pub(crate) const TRAY_ICON_IS_TEMPLATE: bool = true;
 pub(crate) const TRAY_MENU_ON_LEFT_CLICK: bool = true;
+pub(crate) use super::macos_paste::{
+    post_paste_shortcut, refresh_paste_target, remember_frontmost_application,
+};
 
 pub(crate) fn tray_event_opens_settings(_event: &TrayIconEvent) -> bool {
     false
@@ -33,7 +36,6 @@ pub(crate) fn tray_event_opens_settings(_event: &TrayIconEvent) -> bool {
 
 const NS_POP_UP_MENU_WINDOW_LEVEL: i32 = 101;
 const NS_WINDOW_STYLE_MASK_NON_ACTIVATING_PANEL: i32 = 1 << 7;
-const PASTE_KEY_CODE: u16 = 0x09;
 const ACCESSIBILITY_SETTINGS_URL: &str =
     "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
 
@@ -206,75 +208,6 @@ pub(crate) fn hide_help_window(app_handle: &AppHandle, label: &str) -> Result<()
 
 pub(crate) fn finish_setup(app: &mut App) {
     app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-}
-
-fn frontmost_application_process_id() -> Result<i32, String> {
-    use cocoa::base::{id, nil};
-    use objc::{class, msg_send, sel, sel_impl};
-
-    unsafe {
-        let workspace: id = msg_send![class!(NSWorkspace), sharedWorkspace];
-        let application: id = msg_send![workspace, frontmostApplication];
-        if workspace == nil || application == nil {
-            return Err("failed to identify the frontmost application".to_owned());
-        }
-
-        let process_id: i32 = msg_send![application, processIdentifier];
-        if process_id <= 0 || process_id == std::process::id() as i32 {
-            return Err("failed to identify the app that should receive the paste".to_owned());
-        }
-
-        Ok(process_id)
-    }
-}
-
-pub(crate) fn remember_frontmost_application(app_handle: &AppHandle) -> Result<(), String> {
-    let process_id = frontmost_application_process_id()?;
-    println!("[paste] remembered target process: {process_id}");
-    app_handle
-        .state::<PasteTargetState>()
-        .replace(process_id as isize)
-}
-
-pub(crate) fn post_paste_shortcut(target_identifier: isize) -> Result<(), String> {
-    use core_graphics::{
-        event::{CGEvent, CGEventFlags, CGEventTapLocation},
-        event_source::{CGEventSource, CGEventSourceStateID},
-    };
-
-    let target_process_id = i32::try_from(target_identifier)
-        .map_err(|_| "the remembered macOS paste target is invalid".to_owned())?;
-    let source = CGEventSource::new(CGEventSourceStateID::CombinedSessionState)
-        .map_err(|_| "failed to create the macOS keyboard event source".to_owned())?;
-    let key_down = CGEvent::new_keyboard_event(source.clone(), PASTE_KEY_CODE, true)
-        .map_err(|_| "failed to create the Command+V key-down event".to_owned())?;
-    let key_up = CGEvent::new_keyboard_event(source, PASTE_KEY_CODE, false)
-        .map_err(|_| "failed to create the Command+V key-up event".to_owned())?;
-
-    key_down.set_flags(CGEventFlags::CGEventFlagCommand);
-    key_up.set_flags(CGEventFlags::CGEventFlagCommand);
-    match frontmost_application_process_id() {
-        Ok(frontmost_process_id) if frontmost_process_id == target_process_id => {
-            println!(
-                "[paste] target process {target_process_id} is still frontmost; posting through HID event stream"
-            );
-            key_down.post(CGEventTapLocation::HID);
-            key_up.post(CGEventTapLocation::HID);
-        }
-        Ok(frontmost_process_id) => {
-            eprintln!(
-                "[paste] frontmost process changed from {target_process_id} to {frontmost_process_id}; posting to remembered target"
-            );
-            key_down.post_to_pid(target_process_id);
-            key_up.post_to_pid(target_process_id);
-        }
-        Err(error) => {
-            eprintln!("[paste] failed to re-check frontmost process: {error}");
-            key_down.post_to_pid(target_process_id);
-            key_up.post_to_pid(target_process_id);
-        }
-    }
-    Ok(())
 }
 
 pub(crate) fn accessibility_permission_granted() -> bool {

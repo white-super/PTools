@@ -162,7 +162,7 @@ fn switch_to_paste(app_handle: &AppHandle, state: &SequentialPasteState) -> Comm
 
 fn perform_paste(app_handle: &AppHandle, entry: ClipboardHistoryInput) -> CommandResult {
     system_permissions::ensure_automatic_paste_permission()?;
-    platform::remember_frontmost_application(app_handle)?;
+    platform::refresh_paste_target(app_handle)?;
     let target = app_handle.state::<platform::PasteTargetState>().get()?;
     write_internal_clipboard(app_handle, entry)?;
     platform::post_paste_shortcut(target)

@@ -138,6 +138,11 @@ pub(crate) fn remember_frontmost_application(_app_handle: &AppHandle) -> Result<
 }
 
 #[cfg(not(target_os = "windows"))]
+pub(crate) fn refresh_paste_target(_app_handle: &AppHandle) -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
 pub(crate) fn post_paste_shortcut(_target_identifier: isize) -> Result<(), String> {
     Err("automatic paste is not supported on this platform".to_owned())
 }
