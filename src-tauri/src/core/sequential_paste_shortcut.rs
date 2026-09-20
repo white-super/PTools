@@ -91,11 +91,7 @@ fn register_handler(app_handle: &AppHandle, shortcut: Shortcut) -> Result<(), St
 
 fn dispatch_shortcut(app_handle: &AppHandle, state: ShortcutState) {
     let shortcut_state = app_handle.state::<SequentialPasteShortcutState>();
-    if state == ShortcutState::Released {
-        shortcut_state.pressed.store(false, Ordering::Release);
-        return;
-    }
-    if shortcut_state.pressed.swap(true, Ordering::AcqRel) {
+    if !should_paste_on_event(&shortcut_state.pressed, state) {
         return;
     }
     let handle = app_handle.clone();
@@ -106,9 +102,45 @@ fn dispatch_shortcut(app_handle: &AppHandle, state: ShortcutState) {
     });
 }
 
+fn should_paste_on_event(pressed: &AtomicBool, state: ShortcutState) -> bool {
+    match state {
+        ShortcutState::Pressed => {
+            pressed.store(true, Ordering::Release);
+            false
+        }
+        ShortcutState::Released => pressed.swap(false, Ordering::AcqRel),
+    }
+}
+
 fn rollback_error(error: String, rollback: Result<(), String>) -> String {
     match rollback {
         Ok(()) => error,
         Err(rollback_error) => format!("{error}; failed to restore shortcut: {rollback_error}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_paste_on_event;
+    use std::sync::atomic::AtomicBool;
+    use tauri_plugin_global_shortcut::ShortcutState;
+
+    #[test]
+    fn paste_runs_only_after_the_shortcut_is_released() {
+        let pressed = AtomicBool::new(false);
+
+        assert!(!should_paste_on_event(&pressed, ShortcutState::Pressed));
+        assert!(should_paste_on_event(&pressed, ShortcutState::Released));
+    }
+
+    #[test]
+    fn repeated_or_unmatched_events_do_not_paste_twice() {
+        let pressed = AtomicBool::new(false);
+
+        assert!(!should_paste_on_event(&pressed, ShortcutState::Released));
+        assert!(!should_paste_on_event(&pressed, ShortcutState::Pressed));
+        assert!(!should_paste_on_event(&pressed, ShortcutState::Pressed));
+        assert!(should_paste_on_event(&pressed, ShortcutState::Released));
+        assert!(!should_paste_on_event(&pressed, ShortcutState::Released));
     }
 }
